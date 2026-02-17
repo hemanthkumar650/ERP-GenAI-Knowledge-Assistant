@@ -17,6 +17,7 @@ venv/
 # Local databases and vector stores
 data/*.db
 data/chroma_db/
+data/chroma_db*/
 
 # Local policy documents (keep structure only)
 data/policies/*.pdf
