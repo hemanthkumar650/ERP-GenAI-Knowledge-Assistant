@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+.venv311/
+venv/
+
+# Environment and secrets
+.env
+
+# Local databases and vector stores
+data/*.db
+data/chroma_db/
+
+# Local policy documents (keep structure only)
+data/policies/*.pdf
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

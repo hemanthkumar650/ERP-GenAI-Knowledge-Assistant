@@ -1,0 +1,26 @@
+question,expected_source_tag
+How are invoices above the approval threshold routed?,invoice
+What happens when approvals are pending beyond SLA?,approval
+How should purchase order errors be investigated?,purchase_order
+What controls are expected during month-end close?,month_end
+How are vendor master issues escalated?,vendor
+Which team validates tax configuration issues?,tax
+What is the process for role-based access requests?,security
+How should duplicate invoice submissions be handled?,invoice
+What are the response targets for high-priority support issues?,support_sla
+How are finance workflows configured for multi-level approval?,workflow
+What should be checked before posting journal entries?,general_ledger
+How do teams handle payment exceptions?,payments
+How are blocked invoices resolved?,accounts_payable
+What steps are required for customer payment reconciliation?,accounts_receivable
+How is budget control enforced in ERP?,budgeting
+What should users do if they cannot access an environment?,environment
+How are data import errors diagnosed?,data_management
+Which logs are reviewed for failed batch jobs?,batch_processing
+How should a failed integration retry be performed?,integration
+What is the go-live readiness checklist for finance?,go_live
+How are fixed asset depreciation issues corrected?,fixed_assets
+What triggers manual override in exception scenarios?,manual_override
+How should workflow approval hierarchies be updated?,workflow
+Which documentation is required for audit evidence in finance?,audit
+How are unresolved support tickets escalated to operations?,support_sla

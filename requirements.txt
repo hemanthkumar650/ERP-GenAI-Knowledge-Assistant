@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+chromadb
+openai
+python-dotenv
+pypdf
+numpy
+pandas
+tiktoken
+jinja2

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERP GenAI Knowledge Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="nav">
+      <a href="/ui" class="nav-brand">ERP RAG</a>
+      <div class="nav-links">
+        <a href="/ui" class="active">Assistant</a>
+        <a href="/ui/analytics">Analytics</a>
+      </div>
+    </nav>
+    <main class="main">
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="page">
+    <header class="hero card animate-up">
+      <div>
+        <p class="eyebrow">Production RAG Stack</p>
+        <h1>ERP GenAI Knowledge Assistant</h1>
+        <p class="subtitle">Ask grounded ERP policy questions with Azure OpenAI + Chroma. <a href="/ui/analytics" class="link">View analytics →</a></p>
+      </div>
+      <div class="hero-actions">
+        <button id="healthBtn" class="btn btn-secondary">Check Health</button>
+        <button id="reindexBtn" class="btn">Reindex Docs</button>
+      </div>
+    </header>
+
+    <section class="stats animate-up delay-1">
+      <article class="stat card">
+        <span class="label">System</span>
+        <strong id="healthStatus">unknown</strong>
+      </article>
+      <article class="stat card">
+        <span class="label">Indexed Chunks</span>
+        <strong id="chunkCount">-</strong>
+      </article>
+      <article class="stat card">
+        <span class="label">Collection</span>
+        <strong>erp_policies</strong>
+      </article>
+    </section>
+
+    <section class="grid animate-up delay-2">
+      <article class="card ask">
+        <h2>Ask Assistant</h2>
+        <label for="question">Question</label>
+        <textarea id="question" placeholder="Why was my expense reimbursement request rejected?"></textarea>
+        <div class="row">
+          <button id="askBtn" class="btn">Get Grounded Answer</button>
+          <span id="loading" class="loading hidden">Retrieving evidence + generating answer...</span>
+        </div>
+      </article>
+
+      <article class="card answer">
+        <h2>Answer</h2>
+        <pre id="answer">No answer yet.</pre>
+      </article>
+    </section>
+
+    <section class="grid grid-bottom animate-up delay-3">
+      <article class="card">
+        <div class="card-head">
+          <h2>Sources</h2>
+        </div>
+        <ul id="sources" class="list">
+          <li>No sources yet.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Retrieved Evidence</h2>
+          <button id="refreshChunksBtn" class="btn btn-secondary btn-small">Refresh</button>
+        </div>
+        <div id="chunks" class="chunks">No chunks loaded.</div>
+      </article>
+    </section>
+  </div>
+    </main>
+  </div>
+
+  <script>
+    const healthBtn = document.getElementById("healthBtn");
+    const reindexBtn = document.getElementById("reindexBtn");
+    const askBtn = document.getElementById("askBtn");
+    const refreshChunksBtn = document.getElementById("refreshChunksBtn");
+    const questionEl = document.getElementById("question");
+    const answerEl = document.getElementById("answer");
+    const sourcesEl = document.getElementById("sources");
+    const chunksEl = document.getElementById("chunks");
+    const healthStatusEl = document.getElementById("healthStatus");
+    const chunkCountEl = document.getElementById("chunkCount");
+    const loadingEl = document.getElementById("loading");
+
+    function setLoading(state) {
+      if (state) {
+        loadingEl.classList.remove("hidden");
+      } else {
+        loadingEl.classList.add("hidden");
+      }
+    }
+
+    async function loadHealth() {
+      healthStatusEl.textContent = "checking...";
+      try {
+        const res = await fetch("/health");
+        if (!res.ok) throw new Error("Health endpoint failed");
+        const data = await res.json();
+        healthStatusEl.textContent = data.status;
+        chunkCountEl.textContent = String(data.indexed_chunks ?? "-");
+        if (data.status === "starting") {
+          setTimeout(loadHealth, 2000);
+        }
+      } catch (err) {
+        healthStatusEl.textContent = "error";
+      }
+    }
+
+    async function loadChunks() {
+      chunksEl.textContent = "Loading chunk preview...";
+      try {
+        const res = await fetch("/chunks?limit=12");
+        const data = await res.json();
+        if (res.status === 503) {
+          chunksEl.textContent = "Starting up... Try again in a moment.";
+          return;
+        }
+        if (!res.ok) throw new Error(data.detail || "Failed to load chunks");
+        const rows = data.chunks || [];
+        if (!rows.length) {
+          chunksEl.textContent = "No chunks available.";
+          return;
+        }
+        chunksEl.innerHTML = rows.map((row) => `
+          <article class="chunk-item">
+            <header>
+              <span class="chip">${row.source}</span>
+              <code>${row.chunk_id}</code>
+            </header>
+            <p>${(row.text_preview || "").replace(/</g, "&lt;")}${row.text_preview && row.text_preview.length >= 220 ? "..." : ""}</p>
+          </article>
+        `).join("");
+      } catch (err) {
+        chunksEl.textContent = `Error loading chunks: ${err.message}`;
+      }
+    }
+
+    healthBtn.addEventListener("click", loadHealth);
+    refreshChunksBtn.addEventListener("click", loadChunks);
+
+    reindexBtn.addEventListener("click", async () => {
+      reindexBtn.disabled = true;
+      reindexBtn.textContent = "Reindexing...";
+      try {
+        const res = await fetch("/reindex", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Reindex failed");
+        await loadHealth();
+        await loadChunks();
+      } catch (err) {
+        alert(`Reindex failed: ${err.message}`);
+      } finally {
+        reindexBtn.disabled = false;
+        reindexBtn.textContent = "Reindex Docs";
+      }
+    });
+
+    askBtn.addEventListener("click", async () => {
+      const question = questionEl.value.trim();
+      if (!question) {
+        alert("Please enter a question.");
+        return;
+      }
+      setLoading(true);
+      answerEl.textContent = "Searching documents...";
+      sourcesEl.innerHTML = "<li>...</li>";
+
+      try {
+        const res = await fetch("/ask/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Request failed");
+        }
+        answerEl.textContent = "Generating answer...";
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+          for (const part of parts) {
+            let event = "";
+            let data = "";
+            for (const line of part.split("\n")) {
+              if (line.startsWith("event: ")) event = line.slice(7).trim();
+              else if (line.startsWith("data: ")) data = line.slice(6);
+            }
+            if (event === "meta" && data) {
+              const meta = JSON.parse(data);
+              const sources = Array.isArray(meta.sources) ? meta.sources : [];
+              sourcesEl.innerHTML = sources.length
+                ? sources.map((s) => `<li><span class="chip">${s}</span></li>`).join("")
+                : "<li>No sources.</li>";
+              const chunks = Array.isArray(meta.chunks) ? meta.chunks : [];
+              if (chunks.length) {
+                chunksEl.innerHTML = chunks.map((row) => `
+                  <article class="chunk-item">
+                    <header>
+                      <span class="chip">${row.source}</span>
+                      <code>${row.chunk_id}</code>
+                      <span class="score">sim ${Number(row.similarity || 0).toFixed(3)}</span>
+                    </header>
+                    <p>${(row.text || "").slice(0, 280).replace(/</g, "&lt;")}${(row.text || "").length > 280 ? "..." : ""}</p>
+                  </article>
+                `).join("");
+              }
+              answerEl.textContent = "";
+            } else if (event === "token" && data) {
+              try {
+                answerEl.textContent += JSON.parse(data);
+              } catch (_) {}
+            } else if (event === "error" && data) {
+              const err = JSON.parse(data);
+              answerEl.textContent = "Error: " + (err.detail || data);
+            } else if (event === "done") {
+              if (!answerEl.textContent.trim()) answerEl.textContent = "No answer returned.";
+            }
+          }
+        }
+      } catch (err) {
+        answerEl.textContent = "Error: " + err.message;
+        sourcesEl.innerHTML = "<li>Request failed.</li>";
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    loadHealth();
+    loadChunks();
+  </script>
+</body>
+</html>

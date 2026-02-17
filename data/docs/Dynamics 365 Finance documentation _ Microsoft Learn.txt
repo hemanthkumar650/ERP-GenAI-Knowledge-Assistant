@@ -1,0 +1,165 @@
+GET STARTED
+Welcome to Dynamics 365Finance
+WHAT'S NEW
+What's new
+TRAINING
+Training
+CONCEPT
+Troubleshoot
+Implement
+Guidance
+Dynamics 365 implementationguidance
+Implementation lifecyclemanagement
+Implementation FAQ
+Security
+Try/Buy/Deploy
+Try Dynamics 365 Finance
+Buy Dynamics 365 Finance
+Deploy Dynamics 365 Finance
+Set up
+Lifecycle Services (LCS) userguide
+Project onboarding
+Prepare for go-live
+Administer and develop
+Platform development
+Manage environments
+Manage data storage
+Microsoft Dynamics 365 Financedocumentation
+Discover how to make the most of Dynamics 365 Finance with training, documentation, andvideos covering product capabilities. Learn how to use Dynamics 365 Finance to monitor yourglobal financial operations in real time, predict outcomes, and make data-driven decisions todrive business agility and growth.
+2/17/26, 12:49 PM Dynamics 365 Finance documentation | Microsoft Learn
+https://learn.microsoft.com/en-us/dynamics365/finance/ 1/4
+Develop and customize yourenvironment
+Deploy and accessdevelopment environments
+Application stack and serverarchitecture
+Dynamics 365 LifecycleServices resources
+Continuous delivery
+Upgrades, updates, andhotfixes
+Data management overview
+Data import and export
+Database movementoperations
+Data entities overview
+System administration
+System administrationoverview
+Process automation
+Batch processing overview
+Organizationadministration
+Organization administrationoverview
+Organizational hierarchies
+Workflow system
+Number sequences overview
+Global address book overview
+Manage user access
+Role-based security
+Create users
+Assign users to security roles
+Develop integration
+Integration between financeand operations apps and thirdparty apps
+Data management REST API
+Service endpoint overview
+Design principles and bestpractices for data entities
+Microsoft Officeintegration
+Office integration overview
+Configure and send email
+Customize the Open inMicrosoft Office menu
+Microsoft PowerPlatform integration
+Power Platform integrationoverview
+Dual-write overview
+Virtual entities overview
+Dual-write mapping reference
+Azure Data Lakeintegration
+Export to Azure Data Lakeoverview
+Export to Azure Data Lake infinance and operations apps
+Developer reference
+API references
+X++ language reference
+Service endpoint overview
+Open Data Protocol (OData)
+Developer tools
+Development tools in VisualStudio
+Version control, metadatasearch, and navigation
+Build automation using Azure
+Extend and customize
+Extensibility overview
+Application extensibilityroadmap
+Write extensible code
+Develop the userinterface
+User interface development
+General form guidelines
+Build extensible controls
+2/17/26, 12:49 PM Dynamics 365 Finance documentation | Microsoft Learn
+https://learn.microsoft.com/en-us/dynamics365/finance/ 2/4
+Use
+General ledger
+Plan your chart of accounts
+Main account types
+Financial dimensions
+Accounts payable
+Overview
+Configure Accounts payable
+Invoice matching
+Invoice capture solution
+Accounts receivable
+Overview
+Subscription billing
+Customer payments
+Credit and collections
+Budgeting
+Overview
+Budget planning
+Budget control
+Postition forecasting
+Cash and bankmanagement
+Overview
+Cash flow forecasting
+Advanced bank reconciliation
+Cost accounting
+Overview
+Map a cost element dimension
+Overhead calculation
+Fixed assets
+Overview
+Set up fixed assets
+Depreciation conventions
+Asset leasing
+Overview
+Manage asset leases
+Lease workflows
+Reporting
+Financial reporting
+Reporting and Power BIintegrations
+Electronic reporting
+Finance insights
+Overview
+Configure Finance insights
+Customer payment predictions
+Public sector
+Overview
+Plan for public sectorfunctionality
+Security roles in the publicsector
+Globalization studio
+Globalization resources
+Globalization services
+Regulatory configurationservice
+Electronic invoicing
+Tax Calculation
+Mobile apps
+Overview
+Available mobile workspaces
+2/17/26, 12:49 PM Dynamics 365 Finance documentation | Microsoft Learn
+https://learn.microsoft.com/en-us/dynamics365/finance/ 3/4
+Publish mobile workspaces
+Related products
+Dynamics 365 Commerce
+Dynamics 365 Commercedelivers a comprehensiveomnichannel solution thatunifies back-office, in-store,…
+Microsoft Copilot forFinance
+Copilot for Finance helps yousurface insights that supportstrategic decision-making andreduce the time spent on…
+Dynamics 365 ProjectOperations
+Project Operations connectssales, resourcing, projectmanagement, and financeteams in a single application …
+Dynamics 365 SupplyChain Management
+Supply Chain Managementallows you to provide the rightservices and products to yourcustomers, manage…
+Industry solutions
+Use industry-specific solutionsthat are built using Dynamics365 and Microsoft PowerPlatform.
+Microsoft Power Platform
+Build, automate workflows,analyze data, rapidly design,configure, and publish modernwebsites, and build intelligen…
+2/17/26, 12:49 PM Dynamics 365 Finance documentation | Microsoft Learn
+https://learn.microsoft.com/en-us/dynamics365/finance/ 4/4

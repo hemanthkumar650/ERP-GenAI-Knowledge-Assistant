@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics · ERP RAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="nav">
+      <a href="/ui" class="nav-brand">ERP RAG</a>
+      <div class="nav-links">
+        <a href="/ui">Assistant</a>
+        <a href="/ui/analytics" class="active">Analytics</a>
+      </div>
+    </nav>
+    <main class="main">
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="page">
+    <header class="hero card">
+      <div>
+        <p class="eyebrow">Operational Insights</p>
+        <h1>RAG Analytics Dashboard</h1>
+        <p class="subtitle">Usage and retrieval quality powered by Plotly.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-secondary" href="/ui">Back to Assistant</a>
+        <button id="refreshBtn" class="btn">Refresh</button>
+      </div>
+    </header>
+
+    <section class="stats">
+      <article class="stat card">
+        <span class="label">Total Queries</span>
+        <strong id="totalQueries">0</strong>
+      </article>
+      <article class="stat card">
+        <span class="label">Top Source</span>
+        <strong id="topSource">-</strong>
+      </article>
+      <article class="stat card">
+        <span class="label">Average Similarity</span>
+        <strong id="avgSimilarity">-</strong>
+      </article>
+    </section>
+
+    <section class="grid grid-bottom">
+      <article class="card">
+        <h2>Daily Query Volume</h2>
+        <div id="volumeChart" style="height:320px;"></div>
+      </article>
+      <article class="card">
+        <h2>Top Retrieved Sources</h2>
+        <div id="sourceChart" style="height:320px;"></div>
+      </article>
+    </section>
+
+    <section class="card" style="margin-top:14px;">
+      <h2>Top Similarity Distribution</h2>
+      <div id="similarityChart" style="height:320px;"></div>
+    </section>
+  </div>
+    </main>
+  </div>
+
+  <script>
+    const totalQueriesEl = document.getElementById("totalQueries");
+    const topSourceEl = document.getElementById("topSource");
+    const avgSimilarityEl = document.getElementById("avgSimilarity");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    function avg(arr) {
+      if (!arr.length) return 0;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    async function loadAnalytics() {
+      const res = await fetch("/analytics/data");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to load analytics");
+
+      totalQueriesEl.textContent = String(data.total_queries || 0);
+      topSourceEl.textContent = (data.top_sources && data.top_sources.length)
+        ? data.top_sources[0].source
+        : "-";
+      const similarities = Array.isArray(data.similarities) ? data.similarities : [];
+      avgSimilarityEl.textContent = similarities.length ? avg(similarities).toFixed(3) : "-";
+
+      const byDay = Array.isArray(data.by_day) ? data.by_day : [];
+      var layoutBase = {
+        margin: { t: 12, r: 12, b: 44, l: 44 },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(30, 42, 58, 0.6)",
+        font: { color: "#8b9cb6", family: "Inter, sans-serif", size: 12 },
+        xaxis: { gridcolor: "rgba(45, 61, 82, 0.8)", zerolinecolor: "#2d3d52" },
+        yaxis: { gridcolor: "rgba(45, 61, 82, 0.8)", zerolinecolor: "#2d3d52" }
+      };
+      Plotly.newPlot("volumeChart", [{
+        type: "scatter",
+        mode: "lines+markers",
+        x: byDay.map(r => r.date),
+        y: byDay.map(r => r.count),
+        line: { color: "#58a6ff", width: 2.5 },
+        marker: { size: 6, color: "#58a6ff" }
+      }], Object.assign({}, layoutBase, { xaxis: { title: "Date" }, yaxis: { title: "Queries" } }), { displayModeBar: false, responsive: true });
+
+      const topSources = Array.isArray(data.top_sources) ? data.top_sources : [];
+      Plotly.newPlot("sourceChart", [{
+        type: "bar",
+        x: topSources.map(r => r.count).reverse(),
+        y: topSources.map(r => r.source).reverse(),
+        orientation: "h",
+        marker: { color: "#58a6ff" }
+      }], Object.assign({}, layoutBase, { margin: { t: 12, r: 12, b: 44, l: 180 }, xaxis: { title: "Retrieval count" }, yaxis: { title: "" } }), { displayModeBar: false, responsive: true });
+
+      Plotly.newPlot("similarityChart", [{
+        type: "histogram",
+        x: similarities,
+        marker: { color: "#a371f7" },
+        nbinsx: 12
+      }], Object.assign({}, layoutBase, { xaxis: { title: "Top similarity score" }, yaxis: { title: "Frequency" } }), { displayModeBar: false, responsive: true });
+    }
+
+    refreshBtn.addEventListener("click", async () => {
+      refreshBtn.disabled = true;
+      try {
+        await loadAnalytics();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    });
+
+    loadAnalytics().catch((err) => alert(err.message));
+  </script>
+</body>
+</html>
