@@ -86,3 +86,18 @@ Open analytics UI: `http://localhost:8000/ui/analytics`
   - daily query volume
   - top retrieved policy files
   - similarity score distribution
+
+## Screenshots
+
+### Assistant UI
+![Assistant Dashboard](assets/screenshots/assistant-dashboard.png)
+
+### Analytics Overview
+![Analytics Overview](assets/screenshots/analytics-overview.png)
+
+### Sources and Retrieved Evidence
+![Sources and Evidence](assets/screenshots/analytics-sources-evidence.png)
+
+### Similarity Distribution
+![Similarity Distribution](assets/screenshots/analytics-similarity.png)
+
