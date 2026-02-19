@@ -9,6 +9,7 @@ Production-style ERP Knowledge Assistant built with Azure OpenAI, ChromaDB, and 
 - Persistent Chroma vector database (`data/chroma_db`)
 - Grounded RAG answers using strict prompt constraints
 - FastAPI endpoints for Q&A and health checks
+- Optional Langfuse observability for ask/reindex tracing
 
 ## Project Structure
 ```text
@@ -39,6 +40,31 @@ erp-rag-assistant/
    ```
 3. Fill `.env` with Azure OpenAI credentials.
 4. Add ERP policy PDFs into `data/policies`.
+5. (Optional) Fill Langfuse env vars to enable tracing.
+
+### Optional Langfuse Setup
+Add these values in `.env`:
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+If keys are not set, the app runs normally with Langfuse disabled.
+
+## Langfuse Observability
+This project sends traces to Langfuse for:
+- `POST /ask` (trace + `rag_answer` span)
+- `POST /ask/stream` (trace + retrieval metadata)
+- `POST /reindex` (trace + index build span)
+
+Quick verification from terminal (PowerShell):
+```powershell
+$body = @{ question = "What is the expense approval policy?" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/ask" -ContentType "application/json" -Body $body
+```
+
+Then open Langfuse -> `Tracing` and confirm new traces appear.
 
 ## Build Vector Index
 ```bash
@@ -77,6 +103,10 @@ Open analytics UI: `http://localhost:8000/ui/analytics`
 ## Notes
 - Answers are grounded and instructed to return `"I don't know"` if context is missing.
 - Run `python embed_index.py` whenever policy PDFs change.
+- Langfuse traces are emitted for:
+  - `POST /ask`
+  - `POST /ask/stream`
+  - `POST /reindex`
 - The custom web UI at `/ui` supports:
   - health check
   - reindex trigger
@@ -100,4 +130,19 @@ Open analytics UI: `http://localhost:8000/ui/analytics`
 
 ### Similarity Distribution
 ![Similarity Distribution](assets/screenshots/analytics-similarity.png)
+
+### Langfuse Trace View
+![Langfuse Trace View](assets/screenshots/langfuse-trace-view.png)
+
+### Langfuse Metadata
+![Langfuse Metadata](assets/screenshots/langfuse-metadata.png)
+
+### Langfuse Log View
+![Langfuse Log View](assets/screenshots/langfuse-log-view.png)
+
+### Langfuse Rag Answer
+![Langfuse Rag Answer](assets/screenshots/langfuse-rag-answer.png)
+
+### Langfuse Preview
+![Langfuse Preview](assets/screenshots/langfuse-preview.png)
 

@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from analytics_store import AnalyticsStore
 from embed_index import build_index
+from observability import observer
 from rag_pipeline import RAGPipeline
 
 
@@ -104,17 +105,33 @@ def chunks(limit: int = 20) -> dict:
 @app.post("/reindex")
 def reindex() -> dict:
     global pipeline
+    trace = observer.start_trace(
+        name="reindex",
+        metadata={"endpoint": "/reindex"},
+    )
+    span = observer.start_span(trace, name="build_index")
     try:
         result = build_index()
+        observer.end_span(span, output_data=result)
         pipeline = RAGPipeline()
-        return {
+        response = {
             "status": "ok",
             "index_result": result,
             "indexed_chunks": pipeline.collection_count(),
         }
+        observer.update_trace(trace, output_data=response)
+        return response
     except Exception as exc:
+        observer.end_span(span, output_data={"status": "error", "detail": str(exc)})
+        observer.update_trace(
+            trace,
+            output_data={"status": "error"},
+            metadata={"error": str(exc)},
+        )
         logger.exception("Reindex failed")
         raise HTTPException(status_code=500, detail=f"Reindex failed: {exc}") from exc
+    finally:
+        observer.flush()
 
 
 def _ask_stream_gen(question: str):
@@ -128,6 +145,13 @@ def _ask_stream_gen(question: str):
         return
     yield "event: start\ndata: {}\n\n"
     sources, top_similarity = [], None
+    answer_tokens: list[str] = []
+    trace = observer.start_trace(
+        name="ask_stream",
+        input_data={"question": question},
+        metadata={"endpoint": "/ask/stream"},
+    )
+    retrieval_span = observer.start_span(trace, name="retrieval", input_data={"question": question})
     try:
         for kind, payload in pipeline.answer_stream(question):
             if kind == "meta":
@@ -135,15 +159,51 @@ def _ask_stream_gen(question: str):
                 chunks = payload.get("chunks", [])
                 if chunks:
                     top_similarity = max(float(c.get("similarity", 0)) for c in chunks)
+                observer.end_span(
+                    retrieval_span,
+                    output_data={
+                        "source_count": len(sources),
+                        "chunk_count": len(chunks),
+                    },
+                    metadata={"sources": sources, "top_similarity": top_similarity},
+                )
                 yield "event: meta\ndata: " + json.dumps(payload) + "\n\n"
             elif kind == "token":
+                answer_tokens.append(payload)
                 yield "event: token\ndata: " + json.dumps(payload) + "\n\n"
         yield "event: done\ndata: {}\n\n"
         if analytics_store is not None:
             analytics_store.log_query(question=question, sources=sources, top_similarity=top_similarity)
+        observer.update_trace(
+            trace,
+            output_data={
+                "answer": "".join(answer_tokens).strip(),
+                "sources": sources,
+            },
+            metadata={"top_similarity": top_similarity},
+        )
+        if top_similarity is not None:
+            observer.score_trace(
+                trace,
+                name="top_similarity",
+                value=top_similarity,
+                comment="Top chunk similarity for streamed answer",
+            )
     except Exception as exc:
+        observer.end_span(
+            retrieval_span,
+            output_data={"status": "error"},
+            metadata={"error": str(exc)},
+        )
+        observer.update_trace(
+            trace,
+            output_data={"status": "error"},
+            metadata={"error": str(exc)},
+        )
         logger.exception("Stream ask failed")
         yield "event: error\ndata: " + json.dumps({"detail": str(exc)}) + "\n\n"
+    finally:
+        observer.flush()
 
 
 @app.post("/ask/stream")
@@ -165,8 +225,21 @@ def ask(req: AskRequest) -> AskResponse:
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
+    trace = observer.start_trace(
+        name="ask",
+        input_data={"question": question},
+        metadata={"endpoint": "/ask"},
+    )
+    rag_span = observer.start_span(trace, name="rag_answer", input_data={"question": question})
     try:
         result = pipeline.answer(question)
+        observer.end_span(
+            rag_span,
+            output_data={
+                "source_count": len(result["sources"]),
+                "chunk_count": len(result["chunks"]),
+            },
+        )
         if analytics_store is not None:
             top_similarity = None
             if result["chunks"]:
@@ -175,6 +248,24 @@ def ask(req: AskRequest) -> AskResponse:
                 question=question,
                 sources=result["sources"],
                 top_similarity=top_similarity,
+            )
+        else:
+            top_similarity = None
+
+        observer.update_trace(
+            trace,
+            output_data={
+                "answer": result["answer"],
+                "sources": result["sources"],
+            },
+            metadata={"top_similarity": top_similarity},
+        )
+        if top_similarity is not None:
+            observer.score_trace(
+                trace,
+                name="top_similarity",
+                value=top_similarity,
+                comment="Top chunk similarity for sync answer",
             )
         return AskResponse(
             question=result["question"],
@@ -185,8 +276,20 @@ def ask(req: AskRequest) -> AskResponse:
     except HTTPException:
         raise
     except Exception as exc:
+        observer.end_span(
+            rag_span,
+            output_data={"status": "error"},
+            metadata={"error": str(exc)},
+        )
+        observer.update_trace(
+            trace,
+            output_data={"status": "error"},
+            metadata={"error": str(exc)},
+        )
         logger.exception("Failed to answer question")
         raise HTTPException(status_code=500, detail=f"Failed to process question: {exc}") from exc
+    finally:
+        observer.flush()
 
 
 @app.get("/analytics/data")

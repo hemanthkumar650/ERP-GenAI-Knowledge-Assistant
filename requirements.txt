@@ -8,3 +8,4 @@ numpy
 pandas
 tiktoken
 jinja2
+langfuse

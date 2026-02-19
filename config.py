@@ -28,6 +28,9 @@ class Settings:
     top_k: int = int(os.getenv("TOP_K", "2"))
     max_answer_tokens: int = int(os.getenv("MAX_ANSWER_TOKENS", "200"))
     context_max_chars: int = int(os.getenv("CONTEXT_MAX_CHARS", "2400"))
+    langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+    langfuse_secret_key: str = os.getenv("LANGFUSE_SECRET_KEY", "")
+    langfuse_host: str = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
     @property
     def azure_ready(self) -> bool:
@@ -39,6 +42,10 @@ class Settings:
                 self.azure_openai_embedding_deployment,
             ]
         )
+
+    @property
+    def langfuse_ready(self) -> bool:
+        return all([self.langfuse_public_key, self.langfuse_secret_key, self.langfuse_host])
 
 
 settings = Settings()
