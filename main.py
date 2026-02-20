@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from analytics_store import AnalyticsStore
 from embed_index import build_index
+from memory_store import ConversationMemoryStore
 from observability import observer
 from rag_pipeline import RAGPipeline
 
@@ -29,6 +30,7 @@ templates = Jinja2Templates(directory="templates")
 
 pipeline: RAGPipeline | None = None
 analytics_store: AnalyticsStore | None = None
+memory_store = ConversationMemoryStore(max_turns=6)
 _startup_executor = ThreadPoolExecutor(max_workers=1)
 
 
@@ -51,6 +53,11 @@ def startup_event() -> None:
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Employee question about ERP policies")
+    session_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Optional client session id for conversation memory",
+    )
 
 
 class AskResponse(BaseModel):
@@ -58,6 +65,7 @@ class AskResponse(BaseModel):
     answer: str
     sources: list[str]
     chunks: list[dict]
+    session_id: str | None = None
 
 
 @app.get("/")
@@ -134,7 +142,7 @@ def reindex() -> dict:
         observer.flush()
 
 
-def _ask_stream_gen(question: str):
+def _ask_stream_gen(question: str, session_id: str | None = None):
     """Generator for SSE: yields 'event: start' first, then meta, token events, done."""
     if pipeline is None:
         yield "event: error\ndata: " + json.dumps({"detail": "RAG pipeline not initialized"}) + "\n\n"
@@ -143,17 +151,18 @@ def _ask_stream_gen(question: str):
     if not question:
         yield "event: error\ndata: " + json.dumps({"detail": "Question cannot be empty"}) + "\n\n"
         return
+    history = memory_store.get_history(session_id) if session_id else []
     yield "event: start\ndata: {}\n\n"
     sources, top_similarity = [], None
     answer_tokens: list[str] = []
     trace = observer.start_trace(
         name="ask_stream",
         input_data={"question": question},
-        metadata={"endpoint": "/ask/stream"},
+        metadata={"endpoint": "/ask/stream", "session_id": session_id},
     )
     retrieval_span = observer.start_span(trace, name="retrieval", input_data={"question": question})
     try:
-        for kind, payload in pipeline.answer_stream(question):
+        for kind, payload in pipeline.answer_stream(question, conversation_history=history):
             if kind == "meta":
                 sources = payload.get("sources", [])
                 chunks = payload.get("chunks", [])
@@ -172,12 +181,15 @@ def _ask_stream_gen(question: str):
                 answer_tokens.append(payload)
                 yield "event: token\ndata: " + json.dumps(payload) + "\n\n"
         yield "event: done\ndata: {}\n\n"
+        answer_text = "".join(answer_tokens).strip()
+        if session_id and answer_text:
+            memory_store.append_turn(session_id=session_id, question=question, answer=answer_text)
         if analytics_store is not None:
             analytics_store.log_query(question=question, sources=sources, top_similarity=top_similarity)
         observer.update_trace(
             trace,
             output_data={
-                "answer": "".join(answer_tokens).strip(),
+                "answer": answer_text,
                 "sources": sources,
             },
             metadata={"top_similarity": top_similarity},
@@ -210,7 +222,7 @@ def _ask_stream_gen(question: str):
 def ask_stream(req: AskRequest) -> StreamingResponse:
     """Stream answer as Server-Sent Events: meta (sources + chunks), then token events, then done."""
     return StreamingResponse(
-        _ask_stream_gen(req.question),
+        _ask_stream_gen(req.question, req.session_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -224,15 +236,17 @@ def ask(req: AskRequest) -> AskResponse:
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    session_id = req.session_id.strip() if req.session_id else None
+    history = memory_store.get_history(session_id) if session_id else []
 
     trace = observer.start_trace(
         name="ask",
         input_data={"question": question},
-        metadata={"endpoint": "/ask"},
+        metadata={"endpoint": "/ask", "session_id": session_id},
     )
     rag_span = observer.start_span(trace, name="rag_answer", input_data={"question": question})
     try:
-        result = pipeline.answer(question)
+        result = pipeline.answer(question, conversation_history=history)
         observer.end_span(
             rag_span,
             output_data={
@@ -267,11 +281,14 @@ def ask(req: AskRequest) -> AskResponse:
                 value=top_similarity,
                 comment="Top chunk similarity for sync answer",
             )
+        if session_id and result["answer"]:
+            memory_store.append_turn(session_id=session_id, question=question, answer=result["answer"])
         return AskResponse(
             question=result["question"],
             answer=result["answer"],
             sources=result["sources"],
             chunks=result["chunks"],
+            session_id=session_id,
         )
     except HTTPException:
         raise
@@ -290,6 +307,12 @@ def ask(req: AskRequest) -> AskResponse:
         raise HTTPException(status_code=500, detail=f"Failed to process question: {exc}") from exc
     finally:
         observer.flush()
+
+
+@app.delete("/memory/{session_id}")
+def clear_memory(session_id: str) -> dict:
+    cleared = memory_store.clear_session(session_id.strip())
+    return {"session_id": session_id, "cleared": cleared}
 
 
 @app.get("/analytics/data")

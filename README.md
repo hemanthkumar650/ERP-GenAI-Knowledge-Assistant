@@ -10,6 +10,7 @@ Production-style ERP Knowledge Assistant built with Azure OpenAI, ChromaDB, and 
 - Grounded RAG answers using strict prompt constraints
 - FastAPI endpoints for Q&A and health checks
 - Optional Langfuse observability for ask/reindex tracing
+- Conversation memory for follow-up questions via `session_id`
 
 ## Project Structure
 ```text
@@ -86,23 +87,29 @@ Open analytics UI: `http://localhost:8000/ui/analytics`
 - `GET /chunks?limit=20` -> chunk preview from Chroma
 - `GET /analytics/data` -> query usage + source + similarity analytics payload
 - `POST /reindex` -> rebuild index from PDFs and reload pipeline
+- `DELETE /memory/{session_id}` -> clear stored conversation turns for a session
 - `POST /ask`
   - Request:
     ```json
-    { "question": "Why was my expense rejected?" }
+    {
+      "question": "Why was my expense rejected?",
+      "session_id": "employee-123"
+    }
     ```
   - Response:
     ```json
     {
       "question": "Why was my expense rejected?",
       "answer": "...",
-      "sources": ["expense_policy.pdf"]
+      "sources": ["expense_policy.pdf"],
+      "session_id": "employee-123"
     }
     ```
 
 ## Notes
 - Answers are grounded and instructed to return `"I don't know"` if context is missing.
 - Run `python embed_index.py` whenever policy PDFs change.
+- Reuse the same `session_id` across calls to enable short follow-up memory.
 - Langfuse traces are emitted for:
   - `POST /ask`
   - `POST /ask/stream`
@@ -145,4 +152,3 @@ Open analytics UI: `http://localhost:8000/ui/analytics`
 
 ### Langfuse Preview
 ![Langfuse Preview](assets/screenshots/langfuse-preview.png)
-
