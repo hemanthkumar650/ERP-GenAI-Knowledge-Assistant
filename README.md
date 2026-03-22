@@ -1,66 +1,51 @@
 # ERP-GenAI-Knowledge-Assistant
 
-A multi-service ERP policy assistant built with React, Node.js, FastAPI, Chroma, Azure OpenAI, and a .NET background worker.
+Full-stack ERP policy assistant built with React, Node.js, Python, and .NET.
 
-This repository is structured as a small full-stack RAG system:
+This repository demonstrates a multi-service Retrieval-Augmented Generation (RAG) architecture:
 
-- `frontend/`: React + TypeScript client
-- `backend/`: Express + TypeScript API layer
-- `python_rag/`: FastAPI retrieval and generation service
-- `dotnet_worker/`: .NET 8 worker for background policy change monitoring
+- `frontend/`: React + TypeScript chat UI
+- `backend/`: Node.js + Express + TypeScript API
+- `python_rag/`: FastAPI + Chroma + Azure OpenAI RAG service
+- `dotnet_worker/`: .NET 8 background worker for policy change monitoring and reindex triggers
 
-The main idea is straightforward:
-
-1. A user asks a question in the React UI.
-2. The Node/Express API accepts the request.
-3. The Python service retrieves relevant policy chunks from Chroma.
-4. Azure OpenAI generates a grounded answer from the retrieved context.
-5. The .NET worker can watch for policy file changes and trigger reindexing.
-
-## Why this project exists
-
-This project is meant to show how a RAG application can be split into clear service boundaries instead of placing everything in a single script:
-
-- React handles the UI
-- Node handles the API surface and request orchestration
-- Python handles document retrieval and LLM integration
-- .NET handles background operational work
-
-The goal is not to claim a perfect production deployment. The goal is to show architecture, service boundaries, and a working retrieval flow in a way that is easy to understand and extend.
-
-## Current implementation status
-
-What is implemented in this repo today:
-
-- React frontend for asking questions and viewing sources/chunks
-- Express API layer that proxies chat/search/reindex requests to Python
-- Automated regression coverage for the frontend dashboard and backend API layer
-- FastAPI RAG service with:
-  - Azure OpenAI chat and embedding calls
-  - Chroma persistence
-  - PDF loading and chunking
-  - retrieval
-  - answer generation
-  - reindex endpoint
-- .NET worker scaffold that polls the policy directory and triggers Python reindexing
-- Dockerfiles for each service and a `docker-compose.yml`
-
-What to know when reading the code:
-
-- The Python service is the real retrieval core.
-- The Node service is intentionally thin.
-- The .NET service is a background worker, not the primary API.
-- There are also older root-level Python files from an earlier single-service version. The multi-service layout under `frontend/`, `backend/`, `python_rag/`, and `dotnet_worker/` is the current direction.
-
-## Repository layout
+## Architecture
 
 ```text
-ERP-GenAI-Knowledge-Assistant/
+User
+  ->
+React frontend (:3000)
+  ->
+Node/Express API (:5000)
+  ->
+Python RAG service (:8000)
+  ->
+Azure OpenAI + Chroma
+
+Policy file changes
+  ->
+.NET worker
+  ->
+Python /reindex
+```
+
+### What each service does
+
+- `frontend`: renders the chat experience, health status, sources, and retrieved chunks
+- `backend`: exposes `/api/*` endpoints and forwards chat/search/reindex calls to Python
+- `python_rag`: performs retrieval, grounding, embeddings, answer generation, and indexing
+- `dotnet_worker`: polls `data/policies` for changes and triggers reindexing automatically
+
+## Project Layout
+
+```text
+Project/
 |-- frontend/
 |   |-- public/
 |   |-- src/
 |   |-- package.json
-|   `-- tsconfig.json
+|   |-- tsconfig.json
+|   `-- Dockerfile
 |-- backend/
 |   |-- src/
 |   |   |-- config/
@@ -68,19 +53,22 @@ ERP-GenAI-Knowledge-Assistant/
 |   |   |-- services/
 |   |   `-- types/
 |   |-- package.json
-|   `-- tsconfig.json
+|   |-- tsconfig.json
+|   `-- Dockerfile
 |-- python_rag/
 |   |-- utils/
 |   |-- main.py
-|   |-- config.py
 |   |-- rag_pipeline.py
 |   |-- embed_index.py
-|   `-- requirements.txt
+|   |-- requirements.txt
+|   `-- Dockerfile
 |-- dotnet_worker/
 |   |-- Services/
 |   |-- Workers/
 |   |-- Program.cs
-|   `-- Worker.csproj
+|   |-- Worker.csproj
+|   |-- appsettings.json
+|   `-- Dockerfile
 |-- data/
 |   |-- policies/
 |   `-- chroma_db/
@@ -89,110 +77,24 @@ ERP-GenAI-Knowledge-Assistant/
 `-- README.md
 ```
 
-## Architecture
-
-```text
-Browser
-  ->
-React frontend (:3000)
-  ->
-Express API (:5000)
-  ->
-FastAPI RAG service (:8000)
-  ->
-Azure OpenAI + Chroma
-
-Policy document changes
-  ->
-.NET worker
-  ->
-Python /reindex
-```
-
-## Service responsibilities
-
-### Frontend
-
-Location: `frontend/`
-
-Responsibilities:
-
-- render the chat UI
-- call backend `/api/*` endpoints
-- display answers, cited sources, and retrieved evidence
-- show basic system status
-
-### Backend
-
-Location: `backend/`
-
-Responsibilities:
-
-- expose a stable API to the frontend
-- forward chat/search/reindex requests to the Python service
-- keep the browser isolated from direct Python service details
-
-Main routes:
-
-- `GET /health`
-- `GET /api/health`
-- `GET /api/chunks`
-- `POST /api/chat`
-- `POST /api/search`
-- `POST /api/reindex`
-
-### Python RAG service
-
-Location: `python_rag/`
-
-Responsibilities:
-
-- load and chunk PDF policy documents
-- create embeddings with Azure OpenAI
-- store and query vectors in Chroma
-- retrieve relevant chunks for a question
-- generate grounded answers
-- rebuild the index when documents change
-
-Main routes:
-
-- `GET /health`
-- `GET /chunks`
-- `POST /ask`
-- `POST /ask/stream`
-- `POST /search`
-- `POST /reindex`
-
-### .NET worker
-
-Location: `dotnet_worker/`
-
-Responsibilities:
-
-- monitor the policy directory
-- detect file set changes using a directory snapshot
-- call the Python service reindex endpoint
-
-This is included to demonstrate a common enterprise pattern: keeping background operational tasks outside the main request/response path.
-
-## Tech stack
+## Tech Stack
 
 - Frontend: React 18, TypeScript, react-scripts
 - Backend: Node.js, Express, TypeScript, Axios, Helmet, CORS
-- RAG: Python 3.11+, FastAPI, Chroma, Azure OpenAI SDK, pypdf, tiktoken
-- Worker: .NET 8 Worker Service, C#
+- RAG service: Python 3.11+, FastAPI, Chroma, Azure OpenAI, pypdf, tiktoken
+- Worker: .NET 8 Worker Service, C# 12, HttpClient, hosted background service
+- DevOps: Docker, Docker Compose, environment-based config
 - Observability: optional Langfuse integration
-- Containers: Docker, Docker Compose
 
-## Environment variables
+## Environment Variables
 
-Copy the template first:
+Create `.env` from `.env.example`:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Typical values:
+Required values:
 
 ```env
 AZURE_OPENAI_API_KEY=
@@ -215,35 +117,33 @@ NODE_ENV=development
 PYTHON_RAG_URL=http://localhost:8000
 ```
 
-## Local development
-
-### Prerequisites
+## Prerequisites
 
 - Node.js 20+
 - Python 3.11+
 - .NET 8 SDK
-- Azure OpenAI credentials
+- Azure OpenAI deployment credentials
 
 Optional:
 
 - Docker Desktop
 
-### Install dependencies
+## Local Setup
 
-From the repo root:
+From the project root:
 
 ```powershell
 cd C:\Users\heman\Desktop\Project
 ```
 
-Python:
+### 1. Python dependencies
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 pip install -r python_rag\requirements.txt
 ```
 
-Backend:
+### 2. Backend dependencies
 
 ```powershell
 cd backend
@@ -251,7 +151,7 @@ npm.cmd install
 cd ..
 ```
 
-Frontend:
+### 3. Frontend dependencies
 
 ```powershell
 cd frontend
@@ -259,7 +159,7 @@ npm.cmd install
 cd ..
 ```
 
-.NET worker:
+### 4. .NET worker dependencies
 
 ```powershell
 cd dotnet_worker
@@ -267,11 +167,11 @@ dotnet restore
 cd ..
 ```
 
-## Running the stack locally
+## Run Locally
 
-Start each service in its own terminal.
+Open four terminals.
 
-### 1. Python RAG service
+### Terminal 1: Python RAG
 
 ```powershell
 cd C:\Users\heman\Desktop\Project
@@ -280,99 +180,62 @@ cd python_rag
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2. Backend API
+### Terminal 2: Backend API
 
 ```powershell
 cd C:\Users\heman\Desktop\Project\backend
 npm.cmd run dev
 ```
 
-### 3. Frontend
+### Terminal 3: Frontend
 
 ```powershell
 cd C:\Users\heman\Desktop\Project\frontend
 npm.cmd start
 ```
 
-### 4. .NET worker
+### Terminal 4: .NET worker
 
 ```powershell
 cd C:\Users\heman\Desktop\Project\dotnet_worker
 dotnet run
 ```
 
-## Automated checks
-
-### Backend
-
-Run the backend regression suite:
-
-```powershell
-cd C:\Users\heman\Desktop\Project\backend
-npm.cmd test
-```
-
-Build the backend:
-
-```powershell
-cd C:\Users\heman\Desktop\Project\backend
-npm.cmd run build
-```
-
-### Frontend
-
-Run the frontend regression suite:
-
-```powershell
-cd C:\Users\heman\Desktop\Project\frontend
-npm.cmd test
-```
-
-Type-check the frontend:
-
-```powershell
-cd C:\Users\heman\Desktop\Project\frontend
-node .\node_modules\typescript\bin\tsc --noEmit
-```
-
-Notes:
-
-- The frontend test script runs Jest in-band so it behaves well in constrained environments.
-- Automated tests for the Python RAG service and the .NET worker are still future work.
-
-## Local URLs
+## Access Points
 
 - Frontend: `http://localhost:3000`
 - Backend health: `http://localhost:5000/health`
 - Python health: `http://localhost:8000/health`
 
-## Docker
+### Quick smoke test
 
-Build and run:
+1. Start Python, backend, and frontend.
+2. Open `http://localhost:3000`.
+3. Ask a policy question.
+4. Confirm you receive an answer, sources, and retrieved chunks.
+5. Start the `.NET` worker if you want automatic reindex-on-change behavior.
 
-```powershell
-docker compose build
-docker compose up
-```
+## API Overview
 
-Stop:
+### Backend endpoints
 
-```powershell
-docker compose down
-```
+- `GET /health`: backend service health
+- `GET /api/health`: proxied Python health
+- `GET /api/chunks?limit=6`: preview indexed chunks
+- `POST /api/chat`: ask a grounded question
+- `POST /api/search`: semantic retrieval
+- `POST /api/reindex`: rebuild the vector index
 
-## Example requests
-
-### Chat
+### Example chat request
 
 ```json
 {
-  "message": "What is the expense reimbursement policy?",
-  "conversationId": "session-1"
+  "message": "What is the company policy on expense reimbursement?",
+  "conversationId": "optional-session-id"
 }
 ```
 
-### Search
+### Example search request
 
 ```json
 {
@@ -381,11 +244,43 @@ docker compose down
 }
 ```
 
+## Docker
+
+Build and run all services:
+
+```powershell
+docker compose build
+docker compose up
+```
+
+Stop everything:
+
+```powershell
+docker compose down
+```
+
+## What .NET Does Here
+
+The `.NET` service is a background worker, not the main API.
+
+Its role is to:
+
+- watch `data/policies` for changes
+- detect when policy files are added or updated
+- call the Python RAG service `/reindex` endpoint
+- keep the Chroma-backed knowledge base fresh
+
+This lets the interview project show a realistic enterprise split between:
+
+- UI and request/response services
+- AI retrieval/generation logic
+- background operational jobs
+
 ## Troubleshooting
 
-### `react-scripts` is not recognized
+### `react-scripts` not recognized
 
-Install frontend dependencies first:
+Run the frontend install first:
 
 ```powershell
 cd frontend
@@ -394,21 +289,21 @@ npm.cmd install
 
 ### PowerShell blocks `npm`
 
-Use `npm.cmd` instead of `npm`:
+If `npm` is blocked by execution policy, use:
 
 ```powershell
 npm.cmd install
 npm.cmd start
 ```
 
-### Frontend returns `Unexpected token '<'`
+### Frontend shows `Unexpected token '<'`
 
-That usually means the frontend received HTML instead of API JSON.
+That usually means the frontend hit HTML instead of API JSON.
 
 Check that:
 
-- backend is running on port `5000`
-- Python is running on port `8000`
+- backend is running on `:5000`
+- Python is running on `:8000`
 
 ### `.NET SDKs were found` / `dotnet --version` fails
 
@@ -418,30 +313,9 @@ Install the SDK:
 winget install Microsoft.DotNet.SDK.8
 ```
 
-### Answers are empty or stale
-
-Trigger a reindex:
+### Reindex if answers are empty
 
 ```powershell
 Invoke-RestMethod -Method Post http://localhost:8000/reindex
 ```
 
-## Notes
-
-- `.env` should not be committed
-- `node_modules`, `bin`, and `obj` should not be committed
-- `python_rag/` currently contains the retrieval core
-- the backend is intentionally simple and mostly acts as a proxy/orchestration layer
-- the frontend and backend now include small automated regression suites
-- the .NET worker is meant to show background job separation, not replace the Python retrieval service
-
-## Future improvements
-
-- expand automated tests to the Python RAG service and .NET worker
-- add authentication
-- improve typed shared contracts between frontend and backend
-- add stronger document ingestion and metadata handling
-- replace polling in the worker with a more robust file-watching or event-based mechanism
-- add CI for linting/build validation
-
-This project is public as a code sample and learning artifact. It is intentionally transparent about service roles and current implementation state.
