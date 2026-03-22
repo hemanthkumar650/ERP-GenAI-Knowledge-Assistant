@@ -7,6 +7,14 @@ const ragClient = axios.create({
   timeout: 30000,
 });
 
+export interface RagService {
+  getHealth(): Promise<unknown>;
+  getChunks(limit?: number): Promise<unknown>;
+  reindexDocuments(): Promise<unknown>;
+  askQuestion(message: string, conversationId?: string): Promise<any>;
+  searchDocuments(query: string, topK?: number): Promise<any>;
+}
+
 export async function getHealth() {
   const { data } = await ragClient.get("/health");
   return data;
@@ -37,3 +45,11 @@ export async function searchDocuments(query: string, topK = 3) {
   });
   return data;
 }
+
+export const ragService: RagService = {
+  getHealth,
+  getChunks,
+  reindexDocuments,
+  askQuestion,
+  searchDocuments,
+};

@@ -34,6 +34,7 @@ What is implemented in this repo today:
 
 - React frontend for asking questions and viewing sources/chunks
 - Express API layer that proxies chat/search/reindex requests to Python
+- Automated regression coverage for the frontend dashboard and backend API layer
 - FastAPI RAG service with:
   - Azure OpenAI chat and embedding calls
   - Chroma persistence
@@ -300,6 +301,45 @@ cd C:\Users\heman\Desktop\Project\dotnet_worker
 dotnet run
 ```
 
+## Automated checks
+
+### Backend
+
+Run the backend regression suite:
+
+```powershell
+cd C:\Users\heman\Desktop\Project\backend
+npm.cmd test
+```
+
+Build the backend:
+
+```powershell
+cd C:\Users\heman\Desktop\Project\backend
+npm.cmd run build
+```
+
+### Frontend
+
+Run the frontend regression suite:
+
+```powershell
+cd C:\Users\heman\Desktop\Project\frontend
+npm.cmd test
+```
+
+Type-check the frontend:
+
+```powershell
+cd C:\Users\heman\Desktop\Project\frontend
+node .\node_modules\typescript\bin\tsc --noEmit
+```
+
+Notes:
+
+- The frontend test script runs Jest in-band so it behaves well in constrained environments.
+- Automated tests for the Python RAG service and the .NET worker are still future work.
+
 ## Local URLs
 
 - Frontend: `http://localhost:3000`
@@ -392,11 +432,12 @@ Invoke-RestMethod -Method Post http://localhost:8000/reindex
 - `node_modules`, `bin`, and `obj` should not be committed
 - `python_rag/` currently contains the retrieval core
 - the backend is intentionally simple and mostly acts as a proxy/orchestration layer
+- the frontend and backend now include small automated regression suites
 - the .NET worker is meant to show background job separation, not replace the Python retrieval service
 
 ## Future improvements
 
-- add automated tests for each service
+- expand automated tests to the Python RAG service and .NET worker
 - add authentication
 - improve typed shared contracts between frontend and backend
 - add stronger document ingestion and metadata handling
