@@ -22,13 +22,20 @@ build/
 bin/
 obj/
 
-# Environment and secrets
+# Environment and secrets — never commit real keys (use .env.example as a template)
 .env
+.env.*
+!.env.example
+.env.local
+*.pem
+secrets.json
 
 # Local databases and vector stores
 data/*.db
 data/chroma_db/
 data/chroma_db*/
+python_rag/data/chroma_db/
+**/chroma_db/
 
 # Local policy documents (keep structure only)
 data/policies/*.pdf

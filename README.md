@@ -5,7 +5,7 @@ Full-stack ERP policy assistant built with React, Node.js, Python, and .NET.
 This repository demonstrates a multi-service Retrieval-Augmented Generation (RAG) architecture:
 
 - `frontend/`: React + TypeScript chat UI
-- `backend/`: Node.js + Express + TypeScript API
+- `backend/`: Node.js + Express + TypeScript API (proxies to Python)
 - `python_rag/`: FastAPI + Chroma + Azure OpenAI RAG service
 - `dotnet_worker/`: .NET 8 background worker for policy change monitoring and reindex triggers
 
@@ -14,121 +14,106 @@ This repository demonstrates a multi-service Retrieval-Augmented Generation (RAG
 ```text
 User
   ->
-React frontend (:3000)
-  ->
+React dev server (:3000 or :3001 if 3000 is busy)
+  proxies /api ->
 Node/Express API (:5000)
+  forwards to ->
+Python RAG service (:8000 or :8001 — must match PYTHON_RAG_URL in .env)
   ->
-Python RAG service (:8000)
-  ->
-Azure OpenAI + Chroma
+Azure OpenAI + Chroma (persistent vector store under data/chroma_db)
 
-Policy file changes
+Policy file changes (optional)
   ->
 .NET worker
   ->
-Python /reindex
+POST Python /reindex
 ```
 
 ### What each service does
 
-- `frontend`: renders the chat experience, health status, sources, and retrieved chunks
-- `backend`: exposes `/api/*` endpoints and forwards chat/search/reindex calls to Python
-- `python_rag`: performs retrieval, grounding, embeddings, answer generation, and indexing
-- `dotnet_worker`: polls `data/policies` for changes and triggers reindexing automatically
+- **frontend**: Chat UI, health, sources, retrieved chunks; `/api/*` is proxied to the Node backend (`frontend/src/setupProxy.js`).
+- **backend**: `GET /health`, `GET /api/*`, `POST /api/chat`, `POST /api/search`, `POST /api/reindex` — calls Python using `PYTHON_RAG_URL`.
+- **python_rag**: PDF ingestion, chunking, embeddings, Chroma retrieval, grounded answers. Loads `.env` from the **project root** (`python_rag/config.py`).
+- **dotnet_worker**: Polls the policies folder and calls Python `/reindex` when PDFs change (optional for local dev).
 
-## Project Layout
+## Project layout
 
 ```text
 Project/
 |-- frontend/
-|   |-- public/
-|   |-- src/
-|   |-- package.json
-|   |-- tsconfig.json
-|   `-- Dockerfile
 |-- backend/
-|   |-- src/
-|   |   |-- config/
-|   |   |-- routes/
-|   |   |-- services/
-|   |   `-- types/
-|   |-- package.json
-|   |-- tsconfig.json
-|   `-- Dockerfile
 |-- python_rag/
-|   |-- utils/
-|   |-- main.py
-|   |-- rag_pipeline.py
-|   |-- embed_index.py
-|   |-- requirements.txt
-|   `-- Dockerfile
 |-- dotnet_worker/
-|   |-- Services/
-|   |-- Workers/
-|   |-- Program.cs
-|   |-- Worker.csproj
-|   |-- appsettings.json
-|   `-- Dockerfile
 |-- data/
-|   |-- policies/
-|   `-- chroma_db/
+|   |-- policies/          <- place ERP policy PDFs here
+|   `-- chroma_db/         <- Chroma persistence (gitignored if large)
 |-- docker-compose.yml
 |-- .env.example
 `-- README.md
 ```
 
-## Tech Stack
+## Tech stack
 
-- Frontend: React 18, TypeScript, react-scripts
-- Backend: Node.js, Express, TypeScript, Axios, Helmet, CORS
-- RAG service: Python 3.11+, FastAPI, Chroma, Azure OpenAI, pypdf, tiktoken
-- Worker: .NET 8 Worker Service, C# 12, HttpClient, hosted background service
-- DevOps: Docker, Docker Compose, environment-based config
-- Observability: optional Langfuse integration
+- **Frontend:** React 18, TypeScript, react-scripts, http-proxy-middleware
+- **Backend:** Node.js, Express, TypeScript, Axios, Helmet, CORS
+- **RAG:** Python 3.11+, FastAPI, Chroma, Azure OpenAI, pypdf, tiktoken
+- **Worker:** .NET 8 Worker Service, HttpClient
+- **DevOps:** Docker, Docker Compose
 
-## Environment Variables
+## Environment variables
 
-Create `.env` from `.env.example`:
+Create `.env` at the **project root** (copy from `.env.example`):
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Required values:
+Fill at least:
+
+| Variable | Purpose |
+|----------|---------|
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key |
+| `AZURE_OPENAI_ENDPOINT` | e.g. `https://<resource>.openai.azure.com/` |
+| `AZURE_OPENAI_API_VERSION` | API version for your resource |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | Chat model deployment name |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Embedding deployment name |
+| `POLICIES_PATH` | Folder containing `*.pdf` policies (see below) |
+| `CHROMA_PATH` | Chroma DB directory (default `data/chroma_db` relative to cwd when running Python) |
+| `PYTHON_RAG_URL` | URL the **backend** uses to call Python (must match the port you start uvicorn on) |
+
+**Policy folder:** Put PDFs in `data/policies` at the repo root. When you run uvicorn from `python_rag/`, use:
 
 ```env
-AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
-
-POLICIES_PATH=data/policies
-CHROMA_PATH=data/chroma_db
-CHROMA_COLLECTION=erp_policies
-TOP_K=3
-
-LANGFUSE_PUBLIC_KEY=
-LANGFUSE_SECRET_KEY=
-LANGFUSE_HOST=https://cloud.langfuse.com
-
-PORT=5000
-NODE_ENV=development
-PYTHON_RAG_URL=http://localhost:8000
+POLICIES_PATH=../data/policies
 ```
+
+**Backend → Python:** If Python listens on port `8001`, set:
+
+```env
+PYTHON_RAG_URL=http://localhost:8001
+```
+
+If Python listens on `8000`, use `http://localhost:8000`. Restart the backend after changing this.
+
+Optional: Langfuse keys in `.env` for tracing (see `python_rag/observability.py`).
+
+### Secrets and GitHub
+
+- **Do not commit** `.env` — it is listed in `.gitignore` and should contain real API keys only on your machine or in a secure secret store (CI variables, Azure Key Vault, etc.).
+- **Do commit** `.env.example` (placeholders only, no real keys).
+- Before pushing, run `git status` and confirm `.env` does **not** appear as a new file to be added.
+- If `.env` was ever committed by mistake, remove it from Git history, rotate the exposed keys in Azure, and use `git rm --cached .env` so future commits stop tracking it.
 
 ## Prerequisites
 
 - Node.js 20+
 - Python 3.11+
-- .NET 8 SDK
-- Azure OpenAI deployment credentials
+- .NET 8 SDK (only if you run `dotnet_worker`)
+- Azure OpenAI resource with chat + embedding deployments
 
-Optional:
+Optional: Docker Desktop for `docker compose`.
 
-- Docker Desktop
-
-## Local Setup
+## Local setup (first time)
 
 From the project root:
 
@@ -136,14 +121,15 @@ From the project root:
 cd C:\Users\heman\Desktop\Project
 ```
 
-### 1. Python dependencies
+### 1. Python virtual environment
 
 ```powershell
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r python_rag\requirements.txt
 ```
 
-### 2. Backend dependencies
+### 2. Backend
 
 ```powershell
 cd backend
@@ -151,7 +137,7 @@ npm.cmd install
 cd ..
 ```
 
-### 3. Frontend dependencies
+### 3. Frontend
 
 ```powershell
 cd frontend
@@ -159,7 +145,7 @@ npm.cmd install
 cd ..
 ```
 
-### 4. .NET worker dependencies
+### 4. .NET worker (optional)
 
 ```powershell
 cd dotnet_worker
@@ -167,9 +153,9 @@ dotnet restore
 cd ..
 ```
 
-## Run Locally
+## Run locally
 
-Open four terminals.
+Use **three terminals** (four if you run the .NET worker). Order: **Python → backend → frontend**.
 
 ### Terminal 1: Python RAG
 
@@ -177,8 +163,18 @@ Open four terminals.
 cd C:\Users\heman\Desktop\Project
 .\.venv\Scripts\Activate.ps1
 cd python_rag
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8001
 ```
+
+Use the same port as `PYTHON_RAG_URL` in `.env`. For a single process without the reloader, omit `--reload` (helps avoid duplicate listeners on Windows).
+
+**First-time or after adding PDFs**, rebuild the index (or use **Reindex** in the UI):
+
+```powershell
+Invoke-RestMethod -Method Post http://localhost:8001/reindex
+```
+
+Check `indexed_chunks` in `http://localhost:8001/health` — it should be greater than zero after PDFs are indexed.
 
 ### Terminal 2: Backend API
 
@@ -187,6 +183,8 @@ cd C:\Users\heman\Desktop\Project\backend
 npm.cmd run dev
 ```
 
+Listens on `http://localhost:5000` (or `PORT` from `.env`).
+
 ### Terminal 3: Frontend
 
 ```powershell
@@ -194,37 +192,41 @@ cd C:\Users\heman\Desktop\Project\frontend
 npm.cmd start
 ```
 
-### Terminal 4: .NET worker
+Opens CRA on `http://localhost:3000` (or **3001** if 3000 is in use — use the URL printed in the terminal).
+
+### Terminal 4 (optional): .NET worker
 
 ```powershell
 cd C:\Users\heman\Desktop\Project\dotnet_worker
 dotnet run
 ```
 
-## Access Points
+Ensures `PoliciesPath` / `PythonRag:BaseUrl` in `appsettings.json` match your folders and Python URL.
 
-- Frontend: `http://localhost:3000`
-- Backend health: `http://localhost:5000/health`
-- Python health: `http://localhost:8000/health`
+## Access points
 
-### Quick smoke test
+| Service | URL |
+|---------|-----|
+| Frontend | `http://localhost:3000` (or printed port) |
+| Backend | `http://localhost:5000/health` |
+| Python RAG | `http://localhost:<port>/health` (port = uvicorn + `PYTHON_RAG_URL`) |
 
-1. Start Python, backend, and frontend.
-2. Open `http://localhost:3000`.
-3. Ask a policy question.
-4. Confirm you receive an answer, sources, and retrieved chunks.
-5. Start the `.NET` worker if you want automatic reindex-on-change behavior.
+**Smoke test**
 
-## API Overview
+1. `Invoke-RestMethod http://localhost:5000/health` — JSON with `pythonRagUrl` pointing at your Python URL.
+2. Open the frontend URL; **Refresh Health** should show `ok`.
+3. Ask a policy question; you should get an answer, **Sources**, and **Retrieved Evidence** chunks.
 
-### Backend endpoints
+## API overview
 
-- `GET /health`: backend service health
-- `GET /api/health`: proxied Python health
-- `GET /api/chunks?limit=6`: preview indexed chunks
-- `POST /api/chat`: ask a grounded question
-- `POST /api/search`: semantic retrieval
-- `POST /api/reindex`: rebuild the vector index
+### Backend (via frontend proxy: `/api/...`)
+
+- `GET /health` — backend status
+- `GET /api/health` — proxied Python health
+- `GET /api/chunks?limit=6` — sample indexed chunks
+- `POST /api/chat` — grounded chat
+- `POST /api/search` — semantic search
+- `POST /api/reindex` — rebuild vector index
 
 ### Example chat request
 
@@ -246,76 +248,85 @@ dotnet run
 
 ## Docker
 
-Build and run all services:
+From the project root:
 
 ```powershell
 docker compose build
 docker compose up
 ```
 
-Stop everything:
+Stop:
 
 ```powershell
 docker compose down
 ```
 
-## What .NET Does Here
+Services and ports are defined in `docker-compose.yml`.
 
-The `.NET` service is a background worker, not the main API.
+## What the .NET worker does
 
-Its role is to:
-
-- watch `data/policies` for changes
-- detect when policy files are added or updated
-- call the Python RAG service `/reindex` endpoint
-- keep the Chroma-backed knowledge base fresh
-
-This lets the interview project show a realistic enterprise split between:
-
-- UI and request/response services
-- AI retrieval/generation logic
-- background operational jobs
+The worker is **not** the main API. It watches the configured policies directory for changes and `POST`s to Python `/reindex` so the vector store stays in sync. For local development you can skip it and reindex manually or use the UI button.
 
 ## Troubleshooting
 
-### `react-scripts` not recognized
+### Port already in use (`EADDRINUSE` / `WinError 10048`)
 
-Run the frontend install first:
+Something is still bound to that port (often a previous dev server).
+
+**Find PID (example for 5000):**
 
 ```powershell
-cd frontend
-npm.cmd install
+netstat -ano | findstr :5000
 ```
 
-### PowerShell blocks `npm`
+**Stop the process** (replace `<PID>`):
 
-If `npm` is blocked by execution policy, use:
+```powershell
+taskkill /PID <PID> /F
+```
+
+Repeat for `8001`, `3000`, etc., as needed. Only run **one** uvicorn instance per Python port.
+
+### Backend: `listen EADDRINUSE :::5000`
+
+Kill the process on port 5000 (see above), then `npm.cmd run dev` again.
+
+### Python: `only one usage of each socket address` on 8001
+
+Another Python (or app) is already listening. Either use that instance, or free the port and start again.
+
+### Frontend: `Unexpected token '<'` or API errors
+
+- Backend must be on **5000** (or update the proxy in `frontend/src/setupProxy.js`).
+- Python must match **`PYTHON_RAG_URL`** in `.env`.
+- The dev server proxies `/api` to the backend; restart `npm start` after changing `setupProxy.js`.
+
+### `indexed_chunks` is 0
+
+- Confirm PDFs exist under `data/policies` (or the folder in `POLICIES_PATH`).
+- Run `POST` reindex on the Python base URL (see Terminal 1).
+- Ensure `POLICIES_PATH` resolves correctly when cwd is `python_rag/` (e.g. `../data/policies`).
+
+### Chat returns 500
+
+- Check the **Python terminal** for stack traces (often missing or invalid Azure credentials).
+- Verify all four `AZURE_OPENAI_*` variables in `.env` and restart Python after edits.
+
+### `npm` blocked in PowerShell
+
+Use `npm.cmd`:
 
 ```powershell
 npm.cmd install
 npm.cmd start
 ```
 
-### Frontend shows `Unexpected token '<'`
+### .NET worker build errors
 
-That usually means the frontend hit HTML instead of API JSON.
-
-Check that:
-
-- backend is running on `:5000`
-- Python is running on `:8000`
-
-### `.NET SDKs were found` / `dotnet --version` fails
-
-Install the SDK:
+Install .NET 8 SDK, e.g.:
 
 ```powershell
 winget install Microsoft.DotNet.SDK.8
 ```
 
-### Reindex if answers are empty
-
-```powershell
-Invoke-RestMethod -Method Post http://localhost:8000/reindex
-```
-
+Ensure `dotnet_worker` references match a standard .NET 8 worker project (hosted services, `Microsoft.Extensions.Hosting`).
