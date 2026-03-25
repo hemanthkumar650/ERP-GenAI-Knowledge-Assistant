@@ -5,8 +5,10 @@ from pathlib import Path
 import re
 
 import chromadb
+import numpy as np
 
 from config import generate_chat, generate_chat_stream, get_embedding, settings
+from hybrid_retrieval import build_bm25_index, reciprocal_rank_fusion, tokenize
 
 
 STRICT_RAG_PROMPT = """You are an ERP Knowledge Assistant.
@@ -60,6 +62,9 @@ class RAGPipeline:
             name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+        self._bm25 = None
+        self._bm25_ids: list[str] = []
+        self._bm25_count: int = -1
 
     def collection_count(self) -> int:
         return self.collection.count()
@@ -82,8 +87,96 @@ class RAGPipeline:
             )
         return rows
 
-    def retrieve(self, question: str, top_k: int | None = None) -> RetrievalResult:
-        top_k = top_k or settings.top_k
+    def _fetch_all_documents(self) -> tuple[list[str], list[str], list[dict | None]]:
+        """Paginated load of all chunks for BM25 indexing."""
+        batch_size = 2000
+        offset = 0
+        all_ids: list[str] = []
+        all_docs: list[str] = []
+        all_metas: list[dict | None] = []
+        while True:
+            batch = self.collection.get(
+                include=["documents", "metadatas"],
+                limit=batch_size,
+                offset=offset,
+            )
+            ids = batch.get("ids") or []
+            if not ids:
+                break
+            all_ids.extend(ids)
+            docs = batch.get("documents") or []
+            metas = batch.get("metadatas") or []
+            all_docs.extend(docs)
+            all_metas.extend(metas if len(metas) == len(ids) else [None] * len(ids))
+            if len(ids) < batch_size:
+                break
+            offset += batch_size
+        return all_ids, all_docs, all_metas
+
+    def _ensure_bm25(self) -> bool:
+        """Rebuild BM25 when collection size changes. Returns True if BM25 is ready."""
+        count = self.collection.count()
+        if count == 0:
+            self._bm25 = None
+            self._bm25_ids = []
+            self._bm25_count = 0
+            return False
+        if self._bm25 is not None and count == self._bm25_count:
+            return True
+        ids, documents, _ = self._fetch_all_documents()
+        if not ids or not documents:
+            self._bm25 = None
+            self._bm25_ids = []
+            self._bm25_count = count
+            return False
+        self._bm25, _ = build_bm25_index([d or "" for d in documents])
+        self._bm25_ids = ids
+        self._bm25_count = count
+        return True
+
+    def _chunks_from_ids(
+        self,
+        ordered_ids: list[str],
+        id_to_similarity: dict[str, float],
+    ) -> RetrievalResult:
+        if not ordered_ids:
+            return RetrievalResult(context="", sources=[], chunks=[])
+        payload = self.collection.get(ids=ordered_ids, include=["documents", "metadatas"])
+        id_list = payload.get("ids") or []
+        doc_list = payload.get("documents") or []
+        meta_list = payload.get("metadatas") or []
+        by_id: dict[str, tuple[str | None, dict | None]] = {}
+        for cid, doc, meta in zip(id_list, doc_list, meta_list):
+            by_id[cid] = (doc, meta)
+        chunks: list[dict] = []
+        sources: list[str] = []
+        context_parts: list[str] = []
+        for cid in ordered_ids:
+            if cid not in by_id:
+                continue
+            doc, metadata = by_id[cid]
+            source = (metadata or {}).get("source", "unknown.pdf")
+            chunk_meta_id = (metadata or {}).get("chunk_id", "unknown")
+            sim = round(float(id_to_similarity.get(cid, 0.0)), 4)
+            sources.append(source)
+            chunks.append(
+                {
+                    "source": source,
+                    "chunk_id": chunk_meta_id,
+                    "similarity": sim,
+                    "text": doc or "",
+                    "retrieval": "hybrid",
+                }
+            )
+            context_parts.append(f"[{source}::{chunk_meta_id}] {doc or ''}")
+        unique_sources = sorted(set(sources))
+        return RetrievalResult(
+            context="\n\n".join(context_parts).strip(),
+            sources=unique_sources,
+            chunks=chunks,
+        )
+
+    def _retrieve_vector_only(self, question: str, top_k: int) -> RetrievalResult:
         query_vector = get_embedding(question)
         result = self.collection.query(
             query_embeddings=[query_vector],
@@ -110,6 +203,7 @@ class RAGPipeline:
                     "chunk_id": chunk_id,
                     "similarity": similarity,
                     "text": doc,
+                    "retrieval": "vector",
                 }
             )
             context_parts.append(f"[{source}::{chunk_id}] {doc}")
@@ -119,6 +213,53 @@ class RAGPipeline:
             sources=sorted(set(sources)),
             chunks=chunks,
         )
+
+    def _retrieve_hybrid(self, question: str, top_k: int) -> RetrievalResult:
+        mult = max(1, settings.hybrid_candidate_multiplier)
+        candidate_k = min(self.collection.count(), max(top_k * mult, top_k))
+
+        query_vector = get_embedding(question)
+        vec_result = self.collection.query(
+            query_embeddings=[query_vector],
+            n_results=candidate_k,
+            include=["documents", "metadatas", "distances"],
+        )
+        vec_ids = list(vec_result.get("ids", [[]])[0] or [])
+
+        q_tokens = tokenize(question)
+        bm25_ids: list[str] = []
+        if q_tokens and self._bm25 is not None and self._bm25_ids:
+            scores = self._bm25.get_scores(q_tokens)
+            arr = np.asarray(scores, dtype=float)
+            order = np.argsort(arr)[::-1][:candidate_k]
+            bm25_ids = [self._bm25_ids[i] for i in order if 0 <= i < len(self._bm25_ids)]
+
+        if not vec_ids and not bm25_ids:
+            return RetrievalResult(context="", sources=[], chunks=[])
+
+        if not vec_ids and bm25_ids:
+            top_ids = bm25_ids[:top_k]
+            id_to_sim = {tid: round(1.0 - i * (0.5 / max(len(top_ids), 1)), 4) for i, tid in enumerate(top_ids)}
+            return self._chunks_from_ids(top_ids, id_to_sim)
+
+        if not vec_ids:
+            return self._retrieve_vector_only(question, top_k)
+        if not bm25_ids or not q_tokens:
+            return self._retrieve_vector_only(question, top_k)
+
+        fused = reciprocal_rank_fusion([vec_ids, bm25_ids], k=settings.rrf_k)
+        top_ids = [fid for fid, _ in fused[:top_k]]
+        id_to_sim = {fid: float(s) for fid, s in fused[:top_k]}
+        return self._chunks_from_ids(top_ids, id_to_sim)
+
+    def retrieve(self, question: str, top_k: int | None = None) -> RetrievalResult:
+        top_k = top_k or settings.top_k
+        use_hybrid = settings.hybrid_retrieval and self._ensure_bm25()
+
+        if not use_hybrid or self._bm25 is None:
+            return self._retrieve_vector_only(question, top_k)
+
+        return self._retrieve_hybrid(question, top_k)
 
     @staticmethod
     def _format_history(conversation_history: list[dict] | None) -> str:

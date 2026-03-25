@@ -27,7 +27,7 @@ Internal policy search is usually slow and error-prone. This project shows I can
 |--------|----------------|
 | **Frontend** | React 18, TypeScript |
 | **API gateway** | Node.js, Express, TypeScript, Axios, Helmet, CORS |
-| **RAG & AI** | Python, FastAPI, ChromaDB, Azure OpenAI (chat + embeddings), pypdf, tiktoken |
+| **RAG & AI** | Python, FastAPI, ChromaDB, Azure OpenAI (chat + embeddings), **BM25 + RRF hybrid retrieval** (`rank-bm25`), pypdf, tiktoken |
 | **Automation** | .NET 8 Worker Service, HttpClient |
 | **Ops** | Docker, Docker Compose |
 
@@ -60,7 +60,8 @@ Optional: .NET worker watches policy PDFs → calls /reindex on the Python servi
 1. Policy **PDFs** live under `data/policies/`.
 2. Text is **cleaned and chunked** (token limits + overlap) for better retrieval.
 3. Chunks are **embedded** and stored in **Chroma** for similarity search.
-4. On each question, the system **retrieves top-k chunks**, builds a **grounded prompt**, and calls **Azure OpenAI** for the final answer—with **sources** returned to the client.
+4. On each question, the system **retrieves top-k chunks** using **hybrid retrieval** by default: **dense vectors (Chroma)** plus **BM25 keyword scores** over the same chunks, merged with **reciprocal rank fusion (RRF)** so exact policy numbers and acronyms surface reliably. Set `HYBRID_RETRIEVAL=false` in `.env` to use vector-only search.
+5. A **grounded prompt** is built and **Azure OpenAI** returns the final answer—with **sources** returned to the client.
 
 ---
 
@@ -114,6 +115,46 @@ Invoke-RestMethod -Method Post http://localhost:8001/reindex
 ```
 
 Open the app URL from the React output (often `http://localhost:3000`). Ask a question; confirm **sources** and **chunks** appear.
+
+### Verify hybrid retrieval and read API output (PowerShell)
+
+Hybrid search (**BM25 + vector + RRF**) is **on by default**. Dependencies include `rank-bm25` — install from the **project root** (not `backend/`):
+
+```powershell
+cd <project-root>
+pip install -r python_rag\requirements.txt
+```
+
+In `.env`, leave hybrid enabled or set explicitly:
+
+```env
+HYBRID_RETRIEVAL=true
+RRF_K=60
+HYBRID_CANDIDATE_MULTIPLIER=2
+```
+
+Use `HYBRID_RETRIEVAL=false` for **vector-only** retrieval.
+
+**Inspect responses as full JSON** — `Invoke-RestMethod` otherwise truncates long fields in the console:
+
+```powershell
+# Direct Python RAG
+Invoke-RestMethod -Method Post http://localhost:8001/search -ContentType "application/json" -Body '{"query":"expense reimbursement policy 2.21","topK":3}' | ConvertTo-Json -Depth 8
+
+# Via backend proxy (frontend uses these paths)
+Invoke-RestMethod "http://localhost:5000/api/chunks?limit=3" | ConvertTo-Json -Depth 8
+```
+
+Each retrieved chunk includes:
+
+| Field | Meaning |
+|--------|--------|
+| `source` | PDF filename (e.g. `Employee-Expense-Reimbursement-Policy-2023-APPROVED-External-Use.pdf`) |
+| `chunk_id` | Stable id within that file (e.g. `…pdf::chunk-5`) |
+| `similarity` | Normalized score (vector distance, or fused RRF score when hybrid is on) |
+| `retrieval` | `"hybrid"` when BM25+vector+RRF is used, `"vector"` when hybrid is off |
+
+Restart the Python service after changing `.env` or installing packages.
 
 **Optional — .NET worker:** `cd dotnet_worker` → `dotnet run` (auto reindex on file changes).
 
