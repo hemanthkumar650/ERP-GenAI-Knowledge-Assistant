@@ -84,6 +84,7 @@ def chunk_documents(
     for doc in documents:
         source = doc["source"]
         text = doc["text"]
+        doc_metadata = doc.get("metadata") or {}
         parts = split_text_into_chunks(
             text=text,
             chunk_size_tokens=chunk_size_tokens,
@@ -91,5 +92,15 @@ def chunk_documents(
         )
         for index, chunk_text in enumerate(parts, start=1):
             chunk_id = f"{source}::chunk-{index}"
-            chunks.append({"chunk_id": chunk_id, "text": chunk_text, "source": source})
+            chunks.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": chunk_text,
+                    "source": source,
+                    "policy_type": str(doc_metadata.get("policy_type", "unknown")),
+                    "effective_date": str(doc_metadata.get("effective_date", "unknown")),
+                    "department": str(doc_metadata.get("department", "unknown")),
+                    "version": str(doc_metadata.get("version", "unknown")),
+                }
+            )
     return chunks

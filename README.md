@@ -11,6 +11,7 @@ I built this to demonstrate how **Retrieval-Augmented Generation** fits into a r
 - **Multi-service architecture:** React + TypeScript frontend, Node.js/Express API layer, Python FastAPI RAG service, and a **.NET 8 worker** that can detect policy file changes and trigger re-indexing (mirroring how real companies split web apps, AI, and ops jobs).
 - **End-to-end RAG:** PDF ingestion → text cleaning → **token-aware chunking** → **Azure OpenAI embeddings** → **Chroma** vector storage → semantic retrieval → **grounded generation** with strict prompts so answers stay tied to retrieved context.
 - **Trust and transparency:** Responses include **source files and retrieved chunks** (similarity scores) so users can verify what the model used.
+- **Metadata-enriched indexing:** During ingestion/indexing, each chunk is tagged with **policy_type**, **effective_date**, **department**, and **version** to support governance-friendly retrieval and filtering.
 - **Developer experience:** Health checks, reindex API, Docker Compose for the whole stack, and environment-based configuration.
 
 ---
@@ -59,9 +60,10 @@ Optional: .NET worker watches policy PDFs → calls /reindex on the Python servi
 
 1. Policy **PDFs** live under `data/policies/`.
 2. Text is **cleaned and chunked** (token limits + overlap) for better retrieval.
-3. Chunks are **embedded** and stored in **Chroma** for similarity search.
-4. On each question, the system **retrieves top-k chunks** using **hybrid retrieval** by default: **dense vectors (Chroma)** plus **BM25 keyword scores** over the same chunks, merged with **reciprocal rank fusion (RRF)** so exact policy numbers and acronyms surface reliably. Set `HYBRID_RETRIEVAL=false` in `.env` to use vector-only search.
-5. A **grounded prompt** is built and **Azure OpenAI** returns the final answer—with **sources** returned to the client.
+3. For each document, policy metadata is extracted (`policy_type`, `effective_date`, `department`, `version`) and attached to every chunk.
+4. Chunks are **embedded** and stored in **Chroma** for similarity search.
+5. On each question, the system **retrieves top-k chunks** using **hybrid retrieval** by default: **dense vectors (Chroma)** plus **BM25 keyword scores** over the same chunks, merged with **reciprocal rank fusion (RRF)** so exact policy numbers and acronyms surface reliably. Set `HYBRID_RETRIEVAL=false` in `.env` to use vector-only search.
+6. A **grounded prompt** is built and **Azure OpenAI** returns the final answer—with **sources** returned to the client.
 
 ---
 
@@ -153,6 +155,10 @@ Each retrieved chunk includes:
 | `chunk_id` | Stable id within that file (e.g. `…pdf::chunk-5`) |
 | `similarity` | Normalized score (vector distance, or fused RRF score when hybrid is on) |
 | `retrieval` | `"hybrid"` when BM25+vector+RRF is used, `"vector"` when hybrid is off |
+| `policy_type` | Extracted policy category (e.g. Finance, HR, IT) |
+| `effective_date` | Parsed effective date when available |
+| `department` | Sponsoring/owner department parsed from policy header |
+| `version` | Parsed policy version (or year fallback) |
 
 Restart the Python service after changing `.env` or installing packages.
 

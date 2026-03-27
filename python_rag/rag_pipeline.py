@@ -82,6 +82,10 @@ class RAGPipeline:
                     "id": chunk_id,
                     "source": meta.get("source", "unknown.pdf"),
                     "chunk_id": meta.get("chunk_id", "unknown"),
+                    "policy_type": meta.get("policy_type", "unknown"),
+                    "effective_date": meta.get("effective_date", "unknown"),
+                    "department": meta.get("department", "unknown"),
+                    "version": meta.get("version", "unknown"),
                     "text_preview": (doc or "")[:220],
                 }
             )
@@ -166,6 +170,10 @@ class RAGPipeline:
                     "similarity": sim,
                     "text": doc or "",
                     "retrieval": "hybrid",
+                    "policy_type": (metadata or {}).get("policy_type", "unknown"),
+                    "effective_date": (metadata or {}).get("effective_date", "unknown"),
+                    "department": (metadata or {}).get("department", "unknown"),
+                    "version": (metadata or {}).get("version", "unknown"),
                 }
             )
             context_parts.append(f"[{source}::{chunk_meta_id}] {doc or ''}")
@@ -204,6 +212,10 @@ class RAGPipeline:
                     "similarity": similarity,
                     "text": doc,
                     "retrieval": "vector",
+                    "policy_type": (metadata or {}).get("policy_type", "unknown"),
+                    "effective_date": (metadata or {}).get("effective_date", "unknown"),
+                    "department": (metadata or {}).get("department", "unknown"),
+                    "version": (metadata or {}).get("version", "unknown"),
                 }
             )
             context_parts.append(f"[{source}::{chunk_id}] {doc}")

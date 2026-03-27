@@ -21,6 +21,17 @@ NOISE_PATTERNS = (
 TIMESTAMP_RE = re.compile(r"\d{1,2}/\d{1,2}/\d{2,4},\s*\d{1,2}:\d{2}\s*(am|pm)", re.IGNORECASE)
 URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 PAGE_NUMBER_RE = re.compile(r"^\s*\d+\s*$")
+EFFECTIVE_DATE_RE = re.compile(
+    r"\b(?:effective(?:\s+date)?[:\s]+)([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4}|\d{1,2}/\d{1,2}/\d{2,4})",
+    re.IGNORECASE,
+)
+POLICY_TYPE_RE = re.compile(r"\b(?:type of policy|policy type)[:\s]+([A-Za-z0-9&/\- ]{2,80})", re.IGNORECASE)
+DEPARTMENT_RE = re.compile(
+    r"\b(?:sponsoring department\(s\)|department)[:\s]+([A-Za-z0-9&/\- ,]{2,120})",
+    re.IGNORECASE,
+)
+VERSION_RE = re.compile(r"\b(?:version|rev(?:ision)?)[:\s#]+([A-Za-z0-9.\-]{1,30})", re.IGNORECASE)
+YEAR_IN_NAME_RE = re.compile(r"(19|20)\d{2}")
 
 
 def _is_noise_line(line: str) -> bool:
@@ -58,6 +69,32 @@ def _clean_text(raw_text: str) -> str:
     return "\n".join(cleaned).strip()
 
 
+def _normalize_meta_value(value: str, max_len: int = 80) -> str:
+    text = " ".join((value or "").strip().split())
+    if not text:
+        return "unknown"
+    return text[:max_len]
+
+
+def _extract_policy_metadata(cleaned_text: str, source_name: str) -> dict:
+    header = "\n".join((cleaned_text or "").splitlines()[:40])
+    policy_type_match = POLICY_TYPE_RE.search(header)
+    effective_date_match = EFFECTIVE_DATE_RE.search(header)
+    department_match = DEPARTMENT_RE.search(header)
+    version_match = VERSION_RE.search(header)
+    year_match = YEAR_IN_NAME_RE.search(source_name or "")
+
+    metadata = {
+        "policy_type": _normalize_meta_value(policy_type_match.group(1) if policy_type_match else "unknown"),
+        "effective_date": _normalize_meta_value(effective_date_match.group(1) if effective_date_match else "unknown"),
+        "department": _normalize_meta_value(department_match.group(1) if department_match else "unknown"),
+        "version": _normalize_meta_value(
+            version_match.group(1) if version_match else (year_match.group(0) if year_match else "unknown")
+        ),
+    }
+    return metadata
+
+
 def extract_pdf_text(pdf_path: Path) -> str:
     reader = PdfReader(str(pdf_path))
     pages: list[str] = []
@@ -78,5 +115,6 @@ def load_policy_documents(data_dir: str) -> list[dict]:
         text = extract_pdf_text(pdf_path)
         if not text:
             continue
-        documents.append({"text": text, "source": pdf_path.name})
+        metadata = _extract_policy_metadata(text, pdf_path.name)
+        documents.append({"text": text, "source": pdf_path.name, "metadata": metadata})
     return documents

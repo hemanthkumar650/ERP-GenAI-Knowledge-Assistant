@@ -16,6 +16,20 @@ def _stable_chunk_uid(chunk: dict) -> str:
     return sha1(payload).hexdigest()
 
 
+METADATA_KEYS = ("policy_type", "effective_date", "department", "version")
+
+
+def _chunk_metadata(chunk: dict) -> dict:
+    meta = {
+        "source": chunk["source"],
+        "chunk_id": chunk["chunk_id"],
+    }
+    for key in METADATA_KEYS:
+        value = str(chunk.get(key, "unknown")).strip()
+        meta[key] = value if value else "unknown"
+    return meta
+
+
 def _embed_with_retry(texts: list[str], max_retries: int = 6) -> list[list[float]]:
     delay_seconds = 10
     attempt = 0
@@ -47,6 +61,14 @@ def build_index() -> dict:
         client.delete_collection(name=settings.chroma_collection)
         collection = client.get_or_create_collection(name=settings.chroma_collection, metadata=desired_metadata)
 
+    # One-time metadata schema migration: if existing chunks are missing new policy fields,
+    # rebuild collection so all records carry consistent metadata.
+    sample = collection.get(limit=1, include=["metadatas"])
+    sample_meta = (sample.get("metadatas") or [None])[0] or {}
+    if sample_meta and any(key not in sample_meta for key in METADATA_KEYS):
+        client.delete_collection(name=settings.chroma_collection)
+        collection = client.get_or_create_collection(name=settings.chroma_collection, metadata=desired_metadata)
+
     existing = collection.get(include=[])
     existing_ids = set(existing.get("ids", []))
 
@@ -66,7 +88,7 @@ def build_index() -> dict:
         batch = to_index[index : index + batch_size]
         ids = [item[0] for item in batch]
         docs_text = [item[1]["text"] for item in batch]
-        metadatas = [{"source": item[1]["source"], "chunk_id": item[1]["chunk_id"]} for item in batch]
+        metadatas = [_chunk_metadata(item[1]) for item in batch]
         vectors = _embed_with_retry(docs_text)
         collection.upsert(ids=ids, documents=docs_text, embeddings=vectors, metadatas=metadatas)
         indexed += len(batch)
