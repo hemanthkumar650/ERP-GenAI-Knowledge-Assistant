@@ -91,6 +91,10 @@ describe("App", () => {
               source: "travel-policy.pdf",
               chunk_id: "chunk-1",
               similarity: 0.1234,
+              policy_type: "Travel",
+              effective_date: "2023-01-01",
+              department: "Finance",
+              version: "2023",
               text_preview: "Managers must approve travel in advance.",
             },
           ],
@@ -107,6 +111,9 @@ describe("App", () => {
     expect(container.textContent).toContain("travel-policy.pdf");
     expect(container.textContent).toContain("chunk-1");
     expect(container.textContent).toContain("Managers must approve travel in advance.");
+    expect(container.textContent).toContain("Policy type");
+    expect(container.textContent).toContain("Travel");
+    expect(container.textContent).toContain("Finance");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -140,7 +147,15 @@ describe("App", () => {
         return createJsonResponse({
           response: "Travel must be approved by a manager.",
           sources: ["travel-policy.pdf"],
-          chunks: [{ source: "travel-policy.pdf", chunk_id: "chunk-2", text_preview: "Approval is required." }],
+          chunks: [
+            {
+              source: "travel-policy.pdf",
+              chunk_id: "chunk-2",
+              retrieval: "hybrid",
+              policy_type: "Travel",
+              text_preview: "Approval is required.",
+            },
+          ],
           conversationId: "session-99",
           timestamp: "2026-03-22T12:00:00.000Z",
         });
@@ -170,6 +185,7 @@ describe("App", () => {
     expect(container.textContent).toContain("Travel must be approved by a manager.");
     expect(container.textContent).toContain("travel-policy.pdf");
     expect(container.textContent).toContain("Approval is required.");
+    expect(container.textContent).toContain("hybrid");
     expect(container.textContent).toContain("active");
     expect(container.textContent).toContain("15");
   });

@@ -8,7 +8,56 @@ type Chunk = {
   similarity?: number;
   text?: string;
   text_preview?: string;
+  retrieval?: string;
+  policy_type?: string;
+  effective_date?: string;
+  department?: string;
+  version?: string;
 };
+
+function isMeaningfulMeta(value: string | undefined): value is string {
+  const v = value?.trim().toLowerCase();
+  return Boolean(v && v !== "unknown");
+}
+
+function ChunkEvidenceMeta({ chunk }: { chunk: Chunk }) {
+  const pairs: { label: string; value: string }[] = [];
+  if (isMeaningfulMeta(chunk.policy_type)) {
+    pairs.push({ label: "Policy type", value: chunk.policy_type });
+  }
+  if (isMeaningfulMeta(chunk.effective_date)) {
+    pairs.push({ label: "Effective", value: chunk.effective_date });
+  }
+  if (isMeaningfulMeta(chunk.department)) {
+    pairs.push({ label: "Department", value: chunk.department });
+  }
+  if (isMeaningfulMeta(chunk.version)) {
+    pairs.push({ label: "Version", value: chunk.version });
+  }
+
+  const mode = chunk.retrieval?.trim().toLowerCase();
+  const showRetrieval = mode === "hybrid" || mode === "vector";
+
+  if (!showRetrieval && pairs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="chunk-enriched" aria-label="Chunk metadata">
+      {showRetrieval ? (
+        <span className={`chip chip-retrieval chip-retrieval--${mode}`} title="How this chunk was retrieved">
+          {mode}
+        </span>
+      ) : null}
+      {pairs.map(({ label, value }) => (
+        <span key={label} className="chunk-meta-pair" title={label}>
+          <span className="chunk-meta-label">{label}</span>
+          {value}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 type ChatResponse = {
   response: string;
@@ -207,6 +256,7 @@ function App() {
                     <code>{chunk.chunk_id}</code>
                     {typeof chunk.similarity === "number" ? <span>sim {chunk.similarity.toFixed(3)}</span> : null}
                   </div>
+                  <ChunkEvidenceMeta chunk={chunk} />
                   <p>{chunk.text_preview ?? chunk.text ?? "No preview available."}</p>
                 </article>
               ))

@@ -266,6 +266,43 @@ code {
   align-items: center;
 }
 
+.chunk-enriched {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: baseline;
+  margin-top: 0.55rem;
+}
+
+.chunk-meta-pair {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.chunk-meta-label {
+  color: var(--accent-deep);
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+.chip-retrieval {
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.65rem;
+}
+
+.chip-retrieval--hybrid {
+  background: rgba(201, 231, 211, 0.95);
+  color: var(--slate);
+}
+
+.chip-retrieval--vector {
+  background: rgba(36, 52, 71, 0.1);
+  color: var(--slate);
+}
+
 @media (max-width: 960px) {
   .app {
     padding: 1.2rem;
