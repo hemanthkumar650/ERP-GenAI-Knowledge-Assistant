@@ -1,0 +1,102 @@
+[
+  {
+    "question": "What is the policy for submitting expense reimbursements?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "What is the reimbursement submission deadline after the expense is incurred?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "What receipts are required for reimbursement?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "Are meals and lodging reimbursable, and are there limits?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "What are the rules for mileage reimbursement using a personal vehicle?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "Who approves reimbursement requests?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "What is the company card usage policy for travel expenses?",
+    "expected_source_contains": "expense"
+  },
+  {
+    "question": "What documentation is required for audit evidence in finance?",
+    "expected_source_contains": "audit"
+  },
+  {
+    "question": "How are blocked invoices resolved?",
+    "expected_source_contains": "invoice"
+  },
+  {
+    "question": "How should duplicate invoice submissions be handled?",
+    "expected_source_contains": "invoice"
+  },
+  {
+    "question": "What steps are required for customer payment reconciliation?",
+    "expected_source_contains": "payment"
+  },
+  {
+    "question": "How do teams handle payment exceptions?",
+    "expected_source_contains": "payment"
+  },
+  {
+    "question": "What controls are expected during month-end close?",
+    "expected_source_contains": "month"
+  },
+  {
+    "question": "How is budget control enforced in ERP?",
+    "expected_source_contains": "budget"
+  },
+  {
+    "question": "Which team validates tax configuration issues?",
+    "expected_source_contains": "tax"
+  },
+  {
+    "question": "How should purchase order errors be investigated?",
+    "expected_source_contains": "purchase"
+  },
+  {
+    "question": "How are finance workflows configured for multi-level approval?",
+    "expected_source_contains": "approval"
+  },
+  {
+    "question": "What happens when approvals are pending beyond SLA?",
+    "expected_source_contains": "approval"
+  },
+  {
+    "question": "How should workflow approval hierarchies be updated?",
+    "expected_source_contains": "workflow"
+  },
+  {
+    "question": "How are data import errors diagnosed?",
+    "expected_source_contains": "data"
+  },
+  {
+    "question": "Which logs are reviewed for failed batch jobs?",
+    "expected_source_contains": "batch"
+  },
+  {
+    "question": "How should a failed integration retry be performed?",
+    "expected_source_contains": "integration"
+  },
+  {
+    "question": "What is the process for role-based access requests?",
+    "expected_source_contains": "security"
+  },
+  {
+    "question": "What should users do if they cannot access an environment?",
+    "expected_source_contains": "environment"
+  },
+  {
+    "question": "What is the go-live readiness checklist for finance?",
+    "expected_source_contains": "go-live"
+  }
+]

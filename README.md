@@ -168,6 +168,22 @@ Restart the Python service after changing `.env` or installing packages.
 
 ---
 
+## Retrieval evaluation (quick quality check)
+
+Run the starter eval set and measure source hit-rate at top-k:
+
+```powershell
+cd <project-root>
+python python_rag/tests/eval_retrieval.py --dataset data/eval/erp_eval.json --base-url http://localhost:8001 --top-k 3
+```
+
+Output includes:
+- `Hit@1` (correct source keyword in first result)
+- `Hit@k` (correct source keyword appears within top-k results)
+- A short miss list so you can tune chunking/retrieval and compare before vs after changes.
+
+---
+
 ## API (backend, used via `/api/...` from the frontend)
 
 | Method | Path | Purpose |
