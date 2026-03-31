@@ -181,6 +181,9 @@ Output includes:
 - `Hit@1` (correct source keyword in first result)
 - `Hit@k` (correct source keyword appears within top-k results)
 - A short miss list so you can tune chunking/retrieval and compare before vs after changes.
+- Auto-generated files in `data/eval/reports/`:
+  - `retrieval-eval-<timestamp>.csv` (row-level results)
+  - `retrieval-eval-<timestamp>.md` (shareable summary)
 
 ---
 

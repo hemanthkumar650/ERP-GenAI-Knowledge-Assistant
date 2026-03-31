@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -27,6 +29,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=3,
         help="topK to send to /search and use for hit@k.",
+    )
+    parser.add_argument(
+        "--report-dir",
+        default="data/eval/reports",
+        help="Directory where CSV/Markdown reports are written.",
     )
     return parser.parse_args()
 
@@ -61,7 +68,60 @@ def contains_expected(result: dict, expected: str) -> bool:
     return needle in haystack
 
 
-def run(dataset_path: Path, base_url: str, top_k: int) -> int:
+def write_reports(
+    report_dir: Path,
+    total: int,
+    hit_at_1: int,
+    hit_at_k: int,
+    top_k: int,
+    rows: list[dict],
+) -> tuple[Path, Path]:
+    report_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    csv_path = report_dir / f"retrieval-eval-{stamp}.csv"
+    md_path = report_dir / f"retrieval-eval-{stamp}.md"
+
+    with csv_path.open("w", encoding="utf-8", newline="") as csv_file:
+        writer = csv.DictWriter(
+            csv_file,
+            fieldnames=[
+                "question",
+                "expected_source_contains",
+                "hit_at_1",
+                f"hit_at_{top_k}",
+                "top_source",
+                "top_chunk_id",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    hit1_pct = 100.0 * hit_at_1 / total
+    hitk_pct = 100.0 * hit_at_k / total
+    miss_rows = [r for r in rows if r[f"hit_at_{top_k}"] == "false"]
+    lines = [
+        "# Retrieval Evaluation Report",
+        "",
+        f"- Evaluated: **{total}**",
+        f"- Hit@1: **{hit_at_1}/{total} ({hit1_pct:.1f}%)**",
+        f"- Hit@{top_k}: **{hit_at_k}/{total} ({hitk_pct:.1f}%)**",
+        "",
+        "## Misses (top 10)",
+        "",
+    ]
+    if miss_rows:
+        for row in miss_rows[:10]:
+            lines.append(f"- Q: {row['question']}")
+            lines.append(f"  - expected contains: `{row['expected_source_contains']}`")
+            lines.append(f"  - top source: `{row['top_source']}`")
+    else:
+        lines.append("- None")
+
+    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return csv_path, md_path
+
+
+def run(dataset_path: Path, base_url: str, top_k: int, report_dir: Path) -> int:
     rows = json.loads(dataset_path.read_text(encoding="utf-8"))
     if not isinstance(rows, list) or not rows:
         print("Dataset is empty or invalid JSON list.")
@@ -71,6 +131,7 @@ def run(dataset_path: Path, base_url: str, top_k: int) -> int:
     hit_at_1 = 0
     hit_at_k = 0
     failures: list[tuple[str, str, str]] = []
+    report_rows: list[dict] = []
 
     for row in rows:
         question = str(row.get("question", "")).strip()
@@ -86,11 +147,22 @@ def run(dataset_path: Path, base_url: str, top_k: int) -> int:
 
         if results and contains_expected(results[0], expected):
             hit_at_1 += 1
-        if any(contains_expected(r, expected) for r in results[:top_k]):
+        has_hit_k = any(contains_expected(r, expected) for r in results[:top_k])
+        if has_hit_k:
             hit_at_k += 1
         else:
             top_source = str(results[0].get("source")) if results else "NO_RESULTS"
             failures.append((question, expected, top_source))
+        report_rows.append(
+            {
+                "question": question,
+                "expected_source_contains": expected,
+                "hit_at_1": str(bool(results and contains_expected(results[0], expected))).lower(),
+                f"hit_at_{top_k}": str(has_hit_k).lower(),
+                "top_source": str(results[0].get("source")) if results else "NO_RESULTS",
+                "top_chunk_id": str(results[0].get("chunk_id")) if results else "NO_RESULTS",
+            }
+        )
 
     if total == 0:
         print("No valid rows found. Each row needs question + expected_source_contains.")
@@ -106,6 +178,18 @@ def run(dataset_path: Path, base_url: str, top_k: int) -> int:
         print(f"  expected contains: {expected}")
         print(f"  top source: {top_source}")
 
+    csv_path, md_path = write_reports(
+        report_dir=report_dir,
+        total=total,
+        hit_at_1=hit_at_1,
+        hit_at_k=hit_at_k,
+        top_k=top_k,
+        rows=report_rows,
+    )
+    print("")
+    print(f"CSV report: {csv_path}")
+    print(f"Markdown report: {md_path}")
+
     return 0
 
 
@@ -118,7 +202,12 @@ def main() -> int:
     if args.top_k < 1:
         print("--top-k must be >= 1")
         return 1
-    return run(dataset_path=dataset_path, base_url=args.base_url, top_k=args.top_k)
+    return run(
+        dataset_path=dataset_path,
+        base_url=args.base_url,
+        top_k=args.top_k,
+        report_dir=Path(args.report_dir),
+    )
 
 
 if __name__ == "__main__":
