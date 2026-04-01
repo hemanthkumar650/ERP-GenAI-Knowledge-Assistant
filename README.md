@@ -177,6 +177,13 @@ cd <project-root>
 python python_rag/tests/eval_retrieval.py --dataset data/eval/erp_eval.json --base-url http://localhost:8001 --top-k 3
 ```
 
+Shortcut command:
+
+```powershell
+cd <project-root>
+.\scripts\run-eval.ps1
+```
+
 Output includes:
 - `Hit@1` (correct source keyword in first result)
 - `Hit@k` (correct source keyword appears within top-k results)
