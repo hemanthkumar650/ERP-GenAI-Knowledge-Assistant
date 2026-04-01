@@ -184,6 +184,19 @@ cd <project-root>
 .\scripts\run-eval.ps1
 ```
 
+Wait until the RAG API is up (and optionally until documents are indexed), then run eval:
+
+```powershell
+cd <project-root>
+.\scripts\wait-and-eval.ps1 -RequireIndexed
+```
+
+First-time setup in one flow (opens dev windows, waits for health, requires a non-empty index, then eval):
+
+```powershell
+.\scripts\wait-and-eval.ps1 -StartDev -RequireIndexed -MaxWaitSeconds 300
+```
+
 Output includes:
 - `Hit@1` (correct source keyword in first result)
 - `Hit@k` (correct source keyword appears within top-k results)

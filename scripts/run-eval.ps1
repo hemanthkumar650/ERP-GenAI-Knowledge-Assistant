@@ -28,3 +28,4 @@ Write-Host ""
   --base-url $BaseUrl `
   --top-k $TopK `
   --report-dir $ReportDir
+exit $LASTEXITCODE
