@@ -14,7 +14,7 @@ I built this to demonstrate how **Retrieval-Augmented Generation** fits into a r
 - **End-to-end RAG:** PDF ingestion → text cleaning → **token-aware chunking** → **Azure OpenAI embeddings** → **Chroma** vector storage → semantic retrieval → **grounded generation** with strict prompts so answers stay tied to retrieved context.
 - **Trust and transparency:** Responses include **source files and retrieved chunks** (similarity scores) so users can verify what the model used.
 - **Metadata-enriched indexing:** During ingestion/indexing, each chunk is tagged with **policy_type**, **effective_date**, **department**, and **version** to support governance-friendly retrieval and filtering.
-- **Developer experience:** Health checks, reindex API, Docker Compose for the whole stack, and environment-based configuration.
+- **Developer experience:** Health checks, reindex API, Docker Compose for the whole stack, environment-based configuration, **GitHub Actions CI** (tests + builds on `main`), and **Dependabot** for npm/pip/GitHub Actions updates.
 
 ---
 
