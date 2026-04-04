@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   python-tests:
@@ -20,6 +21,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r python_rag/requirements.txt
+
+      - name: Syntax check (compileall)
+        run: python -m compileall -q python_rag
 
       - name: Run Python tests
         run: python -m unittest discover -s python_rag/tests -p "test_*.py"
@@ -38,6 +42,10 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: npm ci
+
+      - name: TypeScript build
+        working-directory: backend
+        run: npm run build
 
       - name: Run tests
         working-directory: backend
@@ -63,3 +71,7 @@ jobs:
       - name: Run tests
         working-directory: frontend
         run: npm test
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
