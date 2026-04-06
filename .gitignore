@@ -40,6 +40,9 @@ python_rag/data/chroma_db/
 # Local policy documents (keep structure only)
 data/policies/*.pdf
 
+# Eval script output (timestamped CSV/Markdown)
+data/eval/reports/
+
 # OS/editor
 .DS_Store
 Thumbs.db

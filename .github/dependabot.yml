@@ -5,18 +5,32 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      backend-production:
+        dependency-type: "production"
+      backend-development:
+        dependency-type: "development"
 
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      frontend-production:
+        dependency-type: "production"
+      frontend-development:
+        dependency-type: "development"
 
   - package-ecosystem: "pip"
     directory: "/python_rag"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

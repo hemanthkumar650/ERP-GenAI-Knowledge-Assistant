@@ -2,6 +2,9 @@
   "name": "erp-genai-knowledge-assistant-frontend",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "proxy": "http://localhost:5000",
   "dependencies": {
     "@types/node": "^22.13.14",
