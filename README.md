@@ -92,6 +92,13 @@ cd backend; npm install; cd ..
 cd frontend; npm install; cd ..
 ```
 
+**Optional — run both Node test suites from the repo root:**
+
+```powershell
+cd <project-root>
+npm test
+```
+
 **3. Run (three terminals — order: Python → backend → frontend)**
 
 ```powershell
