@@ -258,6 +258,29 @@ docker-compose.yml
 
 ---
 
+## Continuous integration (local)
+
+GitHub Actions runs tests and builds on push/PR. To run the **same checks** on Windows before you push:
+
+```powershell
+cd <project-root>
+.\scripts\ci-local.ps1
+```
+
+Skip reinstalling Python packages when your venv is already set up:
+
+```powershell
+.\scripts\ci-local.ps1 -SkipPip
+```
+
+Or:
+
+```powershell
+npm run ci:local
+```
+
+---
+
 ## Troubleshooting (short)
 
 - **Port in use:** Find the process (`netstat -ano | findstr :5000`) and end it, or use one server per port.
