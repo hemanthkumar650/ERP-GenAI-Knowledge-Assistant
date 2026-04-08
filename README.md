@@ -248,6 +248,7 @@ dotnet_worker/     Policy watcher + reindex trigger
 data/policies/     PDFs (local)
 docker-compose.yml
 .env.example       Template only — copy to .env (never commit secrets)
+SECURITY.md        Vulnerability reporting (private disclosure)
 ```
 
 ---
@@ -255,6 +256,8 @@ docker-compose.yml
 ## Security note
 
 `.env` is gitignored. Use `.env.example` as a template only; **do not commit API keys**. For production, use a secret store or CI secrets.
+
+See **[SECURITY.md](SECURITY.md)** for how to report vulnerabilities privately.
 
 ---
 
@@ -277,6 +280,14 @@ Or:
 
 ```powershell
 npm run ci:local
+```
+
+On **Linux, macOS, or WSL** (after `chmod +x scripts/ci-local.sh` once):
+
+```bash
+cd <project-root>
+./scripts/ci-local.sh
+./scripts/ci-local.sh --skip-pip
 ```
 
 ---
