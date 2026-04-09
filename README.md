@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/hemanthkumar650/ERP-GenAI-Knowledge-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/hemanthkumar650/ERP-GenAI-Knowledge-Assistant/actions/workflows/ci.yml)
 
+License: **MIT** — see [LICENSE](LICENSE).
+
 **A production-style, full-stack RAG application** that lets employees ask questions about ERP and HR policy PDFs in plain English—and get **grounded answers with source citations**, not generic LLM guesses.
 
 I built this to demonstrate how **Retrieval-Augmented Generation** fits into a realistic enterprise stack: separate UI, API gateway, AI service, vector store, and optional background automation.
@@ -248,6 +250,7 @@ dotnet_worker/     Policy watcher + reindex trigger
 data/policies/     PDFs (local)
 docker-compose.yml
 .env.example       Template only — copy to .env (never commit secrets)
+LICENSE            MIT license
 SECURITY.md        Vulnerability reporting (private disclosure)
 ```
 
