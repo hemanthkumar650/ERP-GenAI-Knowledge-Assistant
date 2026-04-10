@@ -96,3 +96,16 @@ jobs:
       - name: Production build
         working-directory: frontend
         run: npm run build
+
+  docker-compose:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file for validation
+        run: cp .env.example .env
+
+      - name: Validate compose configuration
+        run: docker compose -f docker-compose.yml config > /dev/null

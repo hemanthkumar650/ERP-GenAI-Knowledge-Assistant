@@ -243,6 +243,7 @@ Example chat body:
 ## Repository layout
 
 ```text
+.github/           CI workflow, Dependabot, PR template
 frontend/          React app
 backend/           Express API
 python_rag/        FastAPI RAG service
