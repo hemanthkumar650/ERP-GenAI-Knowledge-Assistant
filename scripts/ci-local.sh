@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Same checks as GitHub Actions CI (Python + backend + frontend).
+# Same checks as GitHub Actions CI (Python + backend + frontend + .NET worker).
 # Usage: ./scripts/ci-local.sh          # runs pip install first
 #        ./scripts/ci-local.sh --skip-pip
 set -euo pipefail
@@ -45,6 +45,13 @@ export CI=true
   npm ci
   npm test
   npm run build
+)
+
+echo ""
+echo "=== .NET worker (dotnet build) ==="
+(
+  cd "$ROOT/dotnet_worker"
+  dotnet build -c Release
 )
 
 echo ""

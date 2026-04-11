@@ -97,6 +97,23 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  dotnet-worker:
+    name: .NET worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore and build
+        working-directory: dotnet_worker
+        run: |
+          dotnet restore
+          dotnet build --no-restore -c Release
+
   docker-compose:
     name: Docker Compose
     runs-on: ubuntu-latest

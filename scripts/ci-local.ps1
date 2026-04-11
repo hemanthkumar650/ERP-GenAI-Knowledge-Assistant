@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Runs the same checks as GitHub Actions CI (Python + backend + frontend).
+  Runs the same checks as GitHub Actions CI (Python + Node + .NET worker). Use CI for Docker Compose validation.
 
 .DESCRIPTION
   Uses .venv\Scripts\python.exe when present. Pass -SkipPip to skip pip install
@@ -45,6 +45,14 @@ try {
   npm ci
   npm test
   npm run build
+} finally {
+  Pop-Location
+}
+
+Write-Host "`n=== .NET worker (dotnet build) ===" -ForegroundColor Cyan
+Push-Location (Join-Path $Root "dotnet_worker")
+try {
+  dotnet build -c Release
 } finally {
   Pop-Location
 }

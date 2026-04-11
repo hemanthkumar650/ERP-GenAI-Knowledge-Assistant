@@ -16,7 +16,7 @@ I built this to demonstrate how **Retrieval-Augmented Generation** fits into a r
 - **End-to-end RAG:** PDF ingestion → text cleaning → **token-aware chunking** → **Azure OpenAI embeddings** → **Chroma** vector storage → semantic retrieval → **grounded generation** with strict prompts so answers stay tied to retrieved context.
 - **Trust and transparency:** Responses include **source files and retrieved chunks** (similarity scores) so users can verify what the model used.
 - **Metadata-enriched indexing:** During ingestion/indexing, each chunk is tagged with **policy_type**, **effective_date**, **department**, and **version** to support governance-friendly retrieval and filtering.
-- **Developer experience:** Health checks, reindex API, Docker Compose for the whole stack, environment-based configuration, **GitHub Actions CI** (tests + builds on `main`), and **Dependabot** for npm/pip/GitHub Actions updates.
+- **Developer experience:** Health checks, reindex API, Docker Compose for the whole stack, environment-based configuration, **GitHub Actions CI** (Python, Node, **.NET 8 worker**, Docker Compose validation on `main`), and **Dependabot** for npm/pip/NuGet/GitHub Actions updates.
 
 ---
 
@@ -267,7 +267,7 @@ See **[SECURITY.md](SECURITY.md)** for how to report vulnerabilities privately.
 
 ## Continuous integration (local)
 
-GitHub Actions runs tests and builds on push/PR. To run the **same checks** on Windows before you push:
+GitHub Actions runs tests and builds on push/PR (including **`dotnet_worker`** and compose validation). To run the **core checks** locally you need **Node20**, **Python 3.11**, and **.NET 8 SDK** (for the worker). On Windows before you push:
 
 ```powershell
 cd <project-root>
