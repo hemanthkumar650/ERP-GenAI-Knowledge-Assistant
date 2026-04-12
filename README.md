@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/hemanthkumar650/ERP-GenAI-Knowledge-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/hemanthkumar650/ERP-GenAI-Knowledge-Assistant/actions/workflows/ci.yml)
 
-License: **MIT** — see [LICENSE](LICENSE).
+License: **MIT** — see [LICENSE](LICENSE). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **A production-style, full-stack RAG application** that lets employees ask questions about ERP and HR policy PDFs in plain English—and get **grounded answers with source citations**, not generic LLM guesses.
 
@@ -229,6 +229,8 @@ Output includes:
 | POST | `/api/search` | Semantic retrieval |
 | POST | `/api/reindex` | Rebuild vector index |
 
+With the **Python RAG** service running, OpenAPI (Swagger) UI is at **`http://localhost:<port>/docs`** — use the same port as `PYTHON_RAG_URL` in `.env` (for example `8001`).
+
 Example chat body:
 
 ```json
@@ -244,6 +246,7 @@ Example chat body:
 
 ```text
 .github/           CI workflow, Dependabot, PR template
+CONTRIBUTING.md    How to contribute and run local checks
 frontend/          React app
 backend/           Express API
 python_rag/        FastAPI RAG service
