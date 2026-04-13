@@ -245,7 +245,7 @@ Example chat body:
 ## Repository layout
 
 ```text
-.github/           CI workflow, Dependabot, PR template
+.github/           CI, Dependabot, PR + issue templates
 CONTRIBUTING.md    How to contribute and run local checks
 frontend/          React app
 backend/           Express API
