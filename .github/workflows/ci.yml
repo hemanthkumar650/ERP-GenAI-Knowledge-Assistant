@@ -128,3 +128,16 @@ jobs:
 
       - name: Validate compose configuration
         run: docker compose -f docker-compose.yml config > /dev/null
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file for build
+        run: cp .env.example .env
+
+      - name: Build all service images
+        run: docker compose -f docker-compose.yml build
