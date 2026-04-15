@@ -253,6 +253,7 @@ python_rag/        FastAPI RAG service
 dotnet_worker/     Policy watcher + reindex trigger
 data/policies/     PDFs (local)
 docker-compose.yml
+.dockerignore      Smaller/faster `docker compose build` context
 .env.example       Template only — copy to .env (never commit secrets)
 LICENSE            MIT license
 SECURITY.md        Vulnerability reporting (private disclosure)

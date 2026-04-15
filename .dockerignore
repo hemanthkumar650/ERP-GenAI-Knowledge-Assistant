@@ -1,0 +1,43 @@
+# Git / CI (not needed inside images)
+.git
+.github
+
+# Python
+.venv
+venv
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+
+# Node
+**/node_modules
+npm-debug.log*
+yarn-error.log*
+
+# Build outputs
+frontend/build
+backend/dist
+**/bin
+**/obj
+
+# Local data & vector stores (mounted at runtime, not required for image build)
+data/chroma_db
+data/chroma_db*
+**/chroma_db
+data/policies/*.pdf
+python_rag/data
+
+# Secrets — never send to the Docker daemon
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode
+.idea
+**/.DS_Store
+Thumbs.db
+
+# Eval reports (local only)
+data/eval/reports
