@@ -9,6 +9,12 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   backend:
     build:
@@ -20,9 +26,16 @@ services:
       PYTHON_RAG_URL: http://python_rag:8000
       PORT: 5000
     depends_on:
-      - python_rag
+      python_rag:
+        condition: service_healthy
     ports:
       - "5000:5000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
     build:
@@ -31,9 +44,16 @@ services:
     environment:
       BACKEND_PROXY_TARGET: http://backend:5000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   dotnet_worker:
     build:
@@ -45,6 +65,7 @@ services:
       PoliciesPath: /app/data/policies
       PythonRag__BaseUrl: http://python_rag:8000
     depends_on:
-      - python_rag
+      python_rag:
+        condition: service_healthy
     volumes:
       - ./data:/app/data

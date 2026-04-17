@@ -175,7 +175,7 @@ Restart the Python service after changing `.env` or installing packages.
 
 **Optional — .NET worker:** `cd dotnet_worker` → `dotnet run` (auto reindex on file changes).
 
-**Docker:** `docker compose up --build` from the project root.
+**Docker:** `docker compose up --build` from the project root. Services start in dependency order with **health checks**: the backend waits until Python RAG is healthy, the frontend waits for the backend, and the .NET worker waits for RAG—so `depends_on` actually means "ready," not just "started."
 
 ---
 
@@ -252,7 +252,7 @@ backend/           Express API
 python_rag/        FastAPI RAG service
 dotnet_worker/     Policy watcher + reindex trigger
 data/policies/     PDFs (local)
-docker-compose.yml
+docker-compose.yml    Health-check-aware service orchestration
 .dockerignore      Smaller/faster `docker compose build` context
 .env.example       Template only — copy to .env (never commit secrets)
 LICENSE            MIT license
