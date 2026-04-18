@@ -31,7 +31,7 @@ Internal policy search is usually slow and error-prone. This project shows I can
 | Layer | Technologies |
 |--------|----------------|
 | **Frontend** | React 18, TypeScript |
-| **API gateway** | Node.js, Express, TypeScript, Axios, Helmet, CORS |
+| **API gateway** | Node.js, Express, TypeScript, Axios, Helmet, CORS, express-rate-limit |
 | **RAG & AI** | Python, FastAPI, ChromaDB, Azure OpenAI (chat + embeddings), **BM25 + RRF hybrid retrieval** (`rank-bm25`), pypdf, tiktoken |
 | **Automation** | .NET 8 Worker Service, HttpClient |
 | **Ops** | Docker, Docker Compose |
@@ -264,6 +264,8 @@ SECURITY.md        Vulnerability reporting (private disclosure)
 ## Security note
 
 `.env` is gitignored. Use `.env.example` as a template only; **do not commit API keys**. For production, use a secret store or CI secrets.
+
+**Rate limiting:** the backend applies an **IP-based rate limit** to all `/api/*` routes (default **60 requests/minute** per IP) to protect the LLM path from abuse and runaway cost. Tune via `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, or set `RATE_LIMIT_DISABLED=true` to turn it off. The backend `/health` endpoint is **not** rate-limited so Docker health checks stay reliable.
 
 See **[SECURITY.md](SECURITY.md)** for how to report vulnerabilities privately.
 
