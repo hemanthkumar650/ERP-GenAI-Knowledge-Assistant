@@ -4,6 +4,7 @@ const { once } = require("node:events");
 process.env.RATE_LIMIT_DISABLED = "false";
 process.env.RATE_LIMIT_MAX = "3";
 process.env.RATE_LIMIT_WINDOW_MS = "60000";
+process.env.HTTP_LOG_DISABLED = "true";
 
 require("ts-node/register");
 

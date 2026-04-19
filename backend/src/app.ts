@@ -4,6 +4,7 @@ import helmet from "helmet";
 
 import { environment } from "./config/environment";
 import { createApiRateLimiter } from "./middleware/rateLimiter";
+import { createRequestLogger } from "./middleware/requestLogger";
 import createChatRouter from "./routes/chat";
 import createSearchRouter from "./routes/search";
 import { ragService, RagService } from "./services/ragService";
@@ -11,6 +12,7 @@ import { ragService, RagService } from "./services/ragService";
 export function createApp(service: RagService = ragService) {
   const app = express();
 
+  app.use(createRequestLogger());
   app.use(helmet());
   app.use(cors());
   app.use(express.json({ limit: "1mb" }));

@@ -1,6 +1,8 @@
 const assert = require("node:assert/strict");
 const { once } = require("node:events");
 
+process.env.HTTP_LOG_DISABLED = "true";
+
 require("ts-node/register");
 
 const { createApp } = require("../src/app");

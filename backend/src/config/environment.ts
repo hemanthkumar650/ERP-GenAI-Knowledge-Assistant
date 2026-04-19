@@ -19,4 +19,12 @@ export const environment = {
       (process.env.RATE_LIMIT_DISABLED ?? "").toLowerCase() === "true" ||
       process.env.NODE_ENV === "test",
   },
+  logging: {
+    format:
+      process.env.HTTP_LOG_FORMAT ??
+      (process.env.NODE_ENV === "production" ? "combined" : "dev"),
+    disabled:
+      (process.env.HTTP_LOG_DISABLED ?? "").toLowerCase() === "true" ||
+      process.env.NODE_ENV === "test",
+  },
 };
