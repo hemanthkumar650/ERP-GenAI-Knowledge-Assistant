@@ -86,6 +86,31 @@ async function readApiPayload(response: Response) {
   throw new Error(text || "Unexpected non-JSON response from the API.");
 }
 
+class HttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
+function throwIfNotOk(response: Response, data: unknown): void {
+  if (response.ok) {
+    return;
+  }
+
+  const body = data as { error?: string; detail?: string };
+  const fromServer = body.error?.trim() || body.detail?.trim();
+  const message =
+    response.status === 429
+      ? fromServer || "Too many requests. Please wait a moment and try again."
+      : fromServer || `Request failed (${response.status}).`;
+
+  throw new HttpError(message, response.status);
+}
+
 function App() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("Ask a grounded ERP policy question to begin.");
@@ -96,20 +121,34 @@ function App() {
   const [conversationId, setConversationId] = useState<string | undefined>();
 
   async function loadHealth() {
-    const response = await fetch("/api/health");
-    const data = (await readApiPayload(response)) as HealthResponse;
-    setHealth(data);
+    try {
+      const response = await fetch("/api/health");
+      const data = (await readApiPayload(response)) as HealthResponse;
+      throwIfNotOk(response, data);
+      setHealth(data);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 429) {
+        setHealth({ status: "rate_limited" });
+      } else {
+        setHealth({ status: "error" });
+      }
+    }
   }
 
   async function loadChunks() {
-    const response = await fetch("/api/chunks?limit=6");
-    const data = await readApiPayload(response);
-    setChunks(Array.isArray(data.chunks) ? data.chunks : []);
+    try {
+      const response = await fetch("/api/chunks?limit=6");
+      const data = await readApiPayload(response);
+      throwIfNotOk(response, data);
+      setChunks(Array.isArray(data.chunks) ? data.chunks : []);
+    } catch {
+      setChunks([]);
+    }
   }
 
   useEffect(() => {
-    loadHealth().catch(() => setHealth({ status: "error" }));
-    loadChunks().catch(() => setChunks([]));
+    void loadHealth();
+    void loadChunks();
   }, []);
 
   async function handleAsk(event: FormEvent) {
@@ -132,8 +171,9 @@ function App() {
         }),
       });
       const data = (await readApiPayload(response)) as ChatResponse | { error?: string };
-      if (!response.ok || !("response" in data)) {
-        throw new Error("error" in data ? data.error ?? "Chat request failed." : "Chat request failed.");
+      throwIfNotOk(response, data);
+      if (!("response" in data)) {
+        throw new Error("Chat request failed.");
       }
 
       setAnswer(data.response);
@@ -154,9 +194,7 @@ function App() {
     try {
       const response = await fetch("/api/reindex", { method: "POST" });
       const data = await readApiPayload(response);
-      if (!response.ok) {
-        throw new Error(data.error ?? data.detail ?? "Reindex failed.");
-      }
+      throwIfNotOk(response, data);
       await loadHealth();
       await loadChunks();
       setAnswer("Reindex completed. Ask a fresh question to use the updated knowledge base.");
@@ -194,7 +232,9 @@ function App() {
       <section className="stats-grid">
         <article className="stat-card">
           <span className="stat-label">System</span>
-          <strong>{health.status}</strong>
+          <strong title={health.status}>
+            {health.status === "rate_limited" ? "Rate limited" : health.status}
+          </strong>
         </article>
         <article className="stat-card">
           <span className="stat-label">Indexed Chunks</span>

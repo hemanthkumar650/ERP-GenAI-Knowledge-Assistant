@@ -265,7 +265,7 @@ SECURITY.md        Vulnerability reporting (private disclosure)
 
 `.env` is gitignored. Use `.env.example` as a template only; **do not commit API keys**. For production, use a secret store or CI secrets.
 
-**Rate limiting:** the backend applies an **IP-based rate limit** to all `/api/*` routes (default **60 requests/minute** per IP) to protect the LLM path from abuse and runaway cost. Tune via `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, or set `RATE_LIMIT_DISABLED=true` to turn it off. The backend `/health` endpoint is **not** rate-limited so Docker health checks stay reliable.
+**Rate limiting:** the backend applies an **IP-based rate limit** to all `/api/*` routes (default **60 requests/minute** per IP) to protect the LLM path from abuse and runaway cost. Tune via `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, or set `RATE_LIMIT_DISABLED=true` to turn it off. The backend `/health` endpoint is **not** rate-limited so Docker health checks stay reliable. The React UI shows a clear message when chat or reindex hits **429**, and displays **Rate limited** in the system status card if `/api/health` is throttled during startup refresh.
 
 **Request logging:** the backend logs every HTTP request via **morgan** (default format `dev`, switches to `combined` when `NODE_ENV=production`). Change the format with `HTTP_LOG_FORMAT` or silence logs with `HTTP_LOG_DISABLED=true`. Health-check calls to `/health` are skipped so Docker polling doesn't flood the log.
 
