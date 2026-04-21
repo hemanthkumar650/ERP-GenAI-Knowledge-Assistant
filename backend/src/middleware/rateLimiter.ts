@@ -17,5 +17,10 @@ export function createApiRateLimiter(): RequestHandler {
       error:
         "Too many requests. Please slow down and try again in a few moments.",
     },
+    // Cheap status probe; the UI polls this often. LLM routes stay limited.
+    skip: (req) => {
+      const path = req.originalUrl.split("?")[0] ?? "";
+      return req.method === "GET" && path === "/api/health";
+    },
   });
 }

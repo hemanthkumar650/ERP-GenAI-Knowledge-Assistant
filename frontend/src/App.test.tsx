@@ -154,23 +154,6 @@ describe("App", () => {
     expect(container.textContent).toContain("Too many requests");
   });
 
-  it("shows rate_limited in system status when health returns 429", async () => {
-    fetchMock.mockImplementation(async (input) => {
-      const url = String(input);
-      if (url === "/api/health") {
-        return createJsonResponse({ error: "Too many requests." }, { ok: false, status: 429 });
-      }
-      if (url === "/api/chunks?limit=6") {
-        return createJsonResponse({ chunks: [] });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    await renderApp();
-
-    expect(container.textContent).toContain("Rate limited");
-  });
-
   it("submits a trimmed question and renders the answer state", async () => {
     let healthCalls = 0;
 
