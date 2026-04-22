@@ -60,11 +60,24 @@ async function main() {
     const response = await fetch(`${baseUrl}/health`);
     assert.equal(response.status, 200);
 
+    const requestId = response.headers.get("x-request-id");
+    assert.ok(requestId && requestId.length > 0);
+
     const body = await response.json();
     assert.equal(body.status, "ok");
     assert.equal(body.service, "backend");
     assert.equal(typeof body.pythonRagUrl, "string");
     assert.ok(Date.parse(body.timestamp));
+  });
+  });
+
+  await runTest("echoes a valid incoming X-Request-Id header", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: { "X-Request-Id": "trace-from-gateway-1" },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-request-id"), "trace-from-gateway-1");
   });
   });
 

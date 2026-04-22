@@ -20,9 +20,7 @@ export const environment = {
       process.env.NODE_ENV === "test",
   },
   logging: {
-    format:
-      process.env.HTTP_LOG_FORMAT ??
-      (process.env.NODE_ENV === "production" ? "combined" : "dev"),
+    format: process.env.HTTP_LOG_FORMAT ?? "dev",
     disabled:
       (process.env.HTTP_LOG_DISABLED ?? "").toLowerCase() === "true" ||
       process.env.NODE_ENV === "test",

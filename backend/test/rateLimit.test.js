@@ -57,6 +57,7 @@ async function main() {
       assert.equal(limited.status, 429);
       const body = await limited.json();
       assert.match(body.error, /too many requests/i);
+      assert.ok(typeof body.requestId === "string" && body.requestId.length > 0);
     });
   });
 

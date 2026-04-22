@@ -267,7 +267,7 @@ SECURITY.md        Vulnerability reporting (private disclosure)
 
 **Rate limiting:** the backend applies an **IP-based rate limit** to `/api/*` routes (default **60 requests/minute** per IP) to protect the LLM path from abuse and runaway cost. **`GET /api/health` is excluded** so the UI can poll status without burning the budget. Tune via `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, or set `RATE_LIMIT_DISABLED=true` to turn it off. The bare **`/health`** endpoint (non-API) is also exempt so Docker health checks stay reliable. The React UI shows a clear message when chat, search, chunks, or reindex hits **429**, and displays **Rate limited** in the system status card if a throttled endpoint fails during refresh.
 
-**Request logging:** the backend logs every HTTP request via **morgan** (default format `dev`, switches to `combined` when `NODE_ENV=production`). Change the format with `HTTP_LOG_FORMAT` or silence logs with `HTTP_LOG_DISABLED=true`. Health-check calls to `/health` are skipped so Docker polling doesn't flood the log.
+**Request logging:** the backend logs every HTTP request via **morgan** (development uses a compact line that includes **`:req-id`**; production uses **`combined` plus the request id). Change the format with `HTTP_LOG_FORMAT` or silence logs with `HTTP_LOG_DISABLED=true`. Health-check calls to `/health` are skipped so Docker polling doesn't flood the log. Every response includes an **`X-Request-Id`** header (accepts a safe incoming `X-Request-Id` for tracing through a gateway). **429** rate-limit and **500** JSON bodies include the same **`requestId`** for support correlation.
 
 See **[SECURITY.md](SECURITY.md)** for how to report vulnerabilities privately.
 

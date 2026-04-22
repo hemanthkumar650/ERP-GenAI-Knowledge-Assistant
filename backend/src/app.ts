@@ -2,8 +2,11 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import "./types/expressRequestContext";
+
 import { environment } from "./config/environment";
 import { createApiRateLimiter } from "./middleware/rateLimiter";
+import { assignRequestId } from "./middleware/requestId";
 import { createRequestLogger } from "./middleware/requestLogger";
 import createChatRouter from "./routes/chat";
 import createSearchRouter from "./routes/search";
@@ -12,6 +15,7 @@ import { ragService, RagService } from "./services/ragService";
 export function createApp(service: RagService = ragService) {
   const app = express();
 
+  app.use(assignRequestId());
   app.use(createRequestLogger());
   app.use(helmet());
   app.use(cors());
@@ -59,12 +63,12 @@ export function createApp(service: RagService = ragService) {
   app.use("/api/chat", createChatRouter(service));
   app.use("/api/search", createSearchRouter(service));
 
-  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message =
       error instanceof Error
         ? error.message
         : "Unexpected backend error while calling the Python RAG service.";
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: message, requestId: req.requestId });
   });
 
   return app;
