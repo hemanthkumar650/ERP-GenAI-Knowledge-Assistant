@@ -112,10 +112,18 @@ class PythonRagApiTests(unittest.TestCase):
         response = self.client.get("/health")
 
         self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.headers.get("x-request-id"))
+        self.assertGreater(len(response.headers.get("x-request-id", "")), 0)
         self.assertEqual(
             response.json(),
             {"status": "starting", "vector_db_loaded": False, "indexed_chunks": 0},
         )
+
+    def test_echoes_valid_incoming_x_request_id(self) -> None:
+        response = self.client.get("/health", headers={"X-Request-Id": "gw-trace-99"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-request-id"), "gw-trace-99")
 
     def test_chunks_caps_limit_before_calling_pipeline(self) -> None:
         pipeline = ChunkPipeline()

@@ -32,9 +32,9 @@ export function createApp(service: RagService = ragService) {
 
   app.use("/api", createApiRateLimiter());
 
-  app.get("/api/health", async (_req, res, next) => {
+  app.get("/api/health", async (req, res, next) => {
     try {
-      const data = await service.getHealth();
+      const data = await service.getHealth(req.requestId);
       res.json(data);
     } catch (error) {
       next(error);
@@ -44,16 +44,16 @@ export function createApp(service: RagService = ragService) {
   app.get("/api/chunks", async (req, res, next) => {
     try {
       const limit = Number(req.query.limit ?? 12);
-      const data = await service.getChunks(limit);
+      const data = await service.getChunks(limit, req.requestId);
       res.json(data);
     } catch (error) {
       next(error);
     }
   });
 
-  app.post("/api/reindex", async (_req, res, next) => {
+  app.post("/api/reindex", async (req, res, next) => {
     try {
-      const data = await service.reindexDocuments();
+      const data = await service.reindexDocuments(req.requestId);
       res.json(data);
     } catch (error) {
       next(error);

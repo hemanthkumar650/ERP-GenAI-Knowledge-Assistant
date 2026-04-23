@@ -15,7 +15,7 @@ export default function createSearchRouter(ragService: RagService) {
         return res.status(400).json({ error: "query is required" });
       }
 
-      const data = await ragService.searchDocuments(query, body.topK ?? 3);
+      const data = await ragService.searchDocuments(query, body.topK ?? 3, req.requestId);
       const response: SearchResponse = {
         results: data.results ?? [],
         count: data.count ?? 0,

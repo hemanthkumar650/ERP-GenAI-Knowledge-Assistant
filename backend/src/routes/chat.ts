@@ -15,7 +15,7 @@ export default function createChatRouter(ragService: RagService) {
         return res.status(400).json({ error: "message is required" });
       }
 
-      const data = await ragService.askQuestion(message, body.conversationId);
+      const data = await ragService.askQuestion(message, body.conversationId, req.requestId);
       const response: ChatResponse = {
         response: data.answer,
         sources: data.sources ?? [],

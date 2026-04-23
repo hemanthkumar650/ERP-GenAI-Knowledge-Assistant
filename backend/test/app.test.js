@@ -96,7 +96,7 @@ async function main() {
   await runTest("GET /api/chunks forwards the requested limit", async () => {
   let receivedLimit;
   const service = createFakeService();
-  service.getChunks = async (limit = 12) => {
+  service.getChunks = async (limit = 12, _requestId) => {
     receivedLimit = limit;
     return { chunks: [] };
   };
@@ -125,8 +125,8 @@ async function main() {
   await runTest("POST /api/chat trims the message and returns the normalized response", async () => {
   let receivedArgs;
   const service = createFakeService();
-  service.askQuestion = async (message, conversationId) => {
-    receivedArgs = { message, conversationId };
+  service.askQuestion = async (message, conversationId, requestId) => {
+    receivedArgs = { message, conversationId, requestId };
     return {
       answer: "Approved",
       sources: ["expense-policy.pdf"],
@@ -149,18 +149,17 @@ async function main() {
     assert.deepEqual(body.chunks, [{ id: "chunk-7" }]);
     assert.equal(body.conversationId, "session-123");
     assert.ok(Date.parse(body.timestamp));
-    assert.deepEqual(receivedArgs, {
-      message: "What is the policy?",
-      conversationId: "session-123",
-    });
+    assert.equal(receivedArgs.message, "What is the policy?");
+    assert.equal(receivedArgs.conversationId, "session-123");
+    assert.ok(typeof receivedArgs.requestId === "string" && receivedArgs.requestId.length > 0);
   });
   });
 
   await runTest("POST /api/search uses the default topK and returns mapped results", async () => {
   let receivedArgs;
   const service = createFakeService();
-  service.searchDocuments = async (query, topK = 3) => {
-    receivedArgs = { query, topK };
+  service.searchDocuments = async (query, topK = 3, requestId) => {
+    receivedArgs = { query, topK, requestId };
     return {
       results: [{ id: "chunk-3" }],
       count: 1,
@@ -179,11 +178,38 @@ async function main() {
       results: [{ id: "chunk-3" }],
       count: 1,
     });
-    assert.deepEqual(receivedArgs, {
-      query: "expense reimbursement",
-      topK: 3,
-    });
+    assert.equal(receivedArgs.query, "expense reimbursement");
+    assert.equal(receivedArgs.topK, 3);
+    assert.ok(typeof receivedArgs.requestId === "string" && receivedArgs.requestId.length > 0);
   });
+  });
+
+  await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {
+    let seenId;
+    const service = createFakeService();
+    service.askQuestion = async (_message, _conversationId, requestId) => {
+      seenId = requestId;
+      return {
+        answer: "ok",
+        sources: [],
+        chunks: [],
+        session_id: undefined,
+      };
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "X-Request-Id": "upstream-trace-abc",
+        },
+        body: JSON.stringify({ message: "hello" }),
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(seenId, "upstream-trace-abc");
+    });
   });
 
   if (!process.exitCode) {

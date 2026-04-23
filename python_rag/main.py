@@ -8,17 +8,28 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.requests import Request
 
 from embed_index import build_index
 from memory_store import ConversationMemoryStore
 from observability import observer
 from rag_pipeline import RAGPipeline
+from request_id import assign_request_id
 
 
 logger = logging.getLogger("python_rag")
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="ERP-GenAI-Knowledge-Assistant Python Service")
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = assign_request_id(request.headers.get("x-request-id"))
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-Id"] = request_id
+    return response
 
 pipeline: RAGPipeline | None = None
 memory_store = ConversationMemoryStore(max_turns=6)
