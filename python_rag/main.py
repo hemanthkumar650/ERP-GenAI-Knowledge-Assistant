@@ -36,6 +36,13 @@ memory_store = ConversationMemoryStore(max_turns=6)
 startup_executor = ThreadPoolExecutor(max_workers=1)
 
 
+def _trace_metadata(request: Request, endpoint: str, session_id: str | None = None) -> dict:
+    metadata = {"endpoint": endpoint, "request_id": getattr(request.state, "request_id", None)}
+    if session_id is not None:
+        metadata["session_id"] = session_id
+    return metadata
+
+
 def _init_pipeline() -> None:
     global pipeline
     try:
@@ -106,16 +113,24 @@ def chunks(limit: int = 20) -> dict:
 
 
 @app.post("/search", response_model=SearchResponse)
-def search(req: SearchRequest) -> SearchResponse:
+def search(req: SearchRequest, request: Request) -> SearchResponse:
     rag = _require_pipeline()
+    trace = observer.start_trace(
+        name="search",
+        input_data={"query": req.query.strip(), "top_k": req.top_k},
+        metadata=_trace_metadata(request, "/search"),
+    )
     retrieved = rag.retrieve(req.query.strip(), top_k=req.top_k)
-    return SearchResponse(results=retrieved.chunks, count=len(retrieved.chunks))
+    response = SearchResponse(results=retrieved.chunks, count=len(retrieved.chunks))
+    observer.update_trace(trace, output_data={"count": len(retrieved.chunks)})
+    observer.flush()
+    return response
 
 
 @app.post("/reindex")
-def reindex() -> dict:
+def reindex(request: Request) -> dict:
     global pipeline
-    trace = observer.start_trace(name="reindex", metadata={"endpoint": "/reindex"})
+    trace = observer.start_trace(name="reindex", metadata=_trace_metadata(request, "/reindex"))
     span = observer.start_span(trace, name="build_index")
     try:
         result = build_index()
@@ -137,7 +152,7 @@ def reindex() -> dict:
         observer.flush()
 
 
-def _ask_stream_gen(question: str, session_id: str | None = None):
+def _ask_stream_gen(question: str, request_id: str | None = None, session_id: str | None = None):
     if pipeline is None:
         yield "event: error\ndata: " + json.dumps({"detail": "RAG pipeline not initialized"}) + "\n\n"
         return
@@ -150,7 +165,7 @@ def _ask_stream_gen(question: str, session_id: str | None = None):
     trace = observer.start_trace(
         name="ask_stream",
         input_data={"question": question},
-        metadata={"endpoint": "/ask/stream", "session_id": session_id},
+        metadata={"endpoint": "/ask/stream", "session_id": session_id, "request_id": request_id},
     )
     retrieval_span = observer.start_span(trace, name="retrieval", input_data={"question": question})
     answer_tokens: list[str] = []
@@ -183,16 +198,16 @@ def _ask_stream_gen(question: str, session_id: str | None = None):
 
 
 @app.post("/ask/stream")
-def ask_stream(req: AskRequest) -> StreamingResponse:
+def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:
     return StreamingResponse(
-        _ask_stream_gen(req.question, req.session_id),
+        _ask_stream_gen(req.question, getattr(request.state, "request_id", None), req.session_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(req: AskRequest) -> AskResponse:
+def ask(req: AskRequest, request: Request) -> AskResponse:
     rag = _require_pipeline()
     question = req.question.strip()
     if not question:
@@ -203,7 +218,7 @@ def ask(req: AskRequest) -> AskResponse:
     trace = observer.start_trace(
         name="ask",
         input_data={"question": question},
-        metadata={"endpoint": "/ask", "session_id": session_id},
+        metadata=_trace_metadata(request, "/ask", session_id),
     )
     rag_span = observer.start_span(trace, name="rag_answer", input_data={"question": question})
     try:

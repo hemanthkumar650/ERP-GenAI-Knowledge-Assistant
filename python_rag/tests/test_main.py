@@ -21,7 +21,11 @@ rag_main.app.router.on_startup = []
 
 
 class DummyObserver:
+    def __init__(self) -> None:
+        self.last_trace_metadata = None
+
     def start_trace(self, *args, **kwargs):
+        self.last_trace_metadata = kwargs.get("metadata")
         return None
 
     def start_span(self, *args, **kwargs):
@@ -98,7 +102,8 @@ class PythonRagApiTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(rag_main.app)
         self.original_observer = rag_main.observer
-        rag_main.observer = DummyObserver()
+        self.observer = DummyObserver()
+        rag_main.observer = self.observer
         rag_main.pipeline = None
         rag_main.memory_store = ConversationMemoryStore(max_turns=6)
 
@@ -124,6 +129,19 @@ class PythonRagApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers.get("x-request-id"), "gw-trace-99")
+
+    def test_ask_trace_metadata_uses_incoming_request_id(self) -> None:
+        pipeline = AskPipeline()
+        rag_main.pipeline = pipeline
+
+        response = self.client.post(
+            "/ask",
+            json={"question": "What is policy?"},
+            headers={"X-Request-Id": "trace-abc-123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.observer.last_trace_metadata["request_id"], "trace-abc-123")
 
     def test_chunks_caps_limit_before_calling_pipeline(self) -> None:
         pipeline = ChunkPipeline()
@@ -175,6 +193,7 @@ class PythonRagApiTests(unittest.TestCase):
             rag_main.memory_store.get_history("session-7"),
             [{"question": "What is the travel policy?", "answer": "Travel must be approved."}],
         )
+        self.assertEqual(self.observer.last_trace_metadata["request_id"], response.headers["x-request-id"])
 
     def test_ask_stream_emits_events_and_persists_answer(self) -> None:
         pipeline = StreamPipeline()
