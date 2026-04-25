@@ -43,6 +43,10 @@ def _trace_metadata(request: Request, endpoint: str, session_id: str | None = No
     return metadata
 
 
+def _log_with_request_id(message: str, request_id: str | None) -> None:
+    logger.exception("%s request_id=%s", message, request_id or "unknown")
+
+
 def _init_pipeline() -> None:
     global pipeline
     try:
@@ -95,13 +99,14 @@ def root() -> dict:
 
 
 @app.get("/health")
-def health() -> dict:
+def health(request: Request) -> dict:
     if pipeline is None:
         return {"status": "starting", "vector_db_loaded": False, "indexed_chunks": 0}
     try:
         count = pipeline.collection_count()
         return {"status": "ok", "vector_db_loaded": True, "indexed_chunks": count}
     except Exception as exc:
+        _log_with_request_id("Health check failed", getattr(request.state, "request_id", None))
         return {"status": "error", "detail": str(exc)}
 
 
@@ -146,7 +151,7 @@ def reindex(request: Request) -> dict:
     except Exception as exc:
         observer.end_span(span, output_data={"status": "error", "detail": str(exc)})
         observer.update_trace(trace, output_data={"status": "error"}, metadata={"error": str(exc)})
-        logger.exception("Reindex failed")
+        _log_with_request_id("Reindex failed", getattr(request.state, "request_id", None))
         raise HTTPException(status_code=500, detail=f"Reindex failed: {exc}") from exc
     finally:
         observer.flush()
@@ -191,7 +196,7 @@ def _ask_stream_gen(question: str, request_id: str | None = None, session_id: st
     except Exception as exc:
         observer.end_span(retrieval_span, output_data={"status": "error"}, metadata={"error": str(exc)})
         observer.update_trace(trace, output_data={"status": "error"}, metadata={"error": str(exc)})
-        logger.exception("Stream ask failed")
+        _log_with_request_id("Stream ask failed", request_id)
         yield "event: error\ndata: " + json.dumps({"detail": str(exc)}) + "\n\n"
     finally:
         observer.flush()
@@ -242,7 +247,7 @@ def ask(req: AskRequest, request: Request) -> AskResponse:
     except Exception as exc:
         observer.end_span(rag_span, output_data={"status": "error"}, metadata={"error": str(exc)})
         observer.update_trace(trace, output_data={"status": "error"}, metadata={"error": str(exc)})
-        logger.exception("Ask failed")
+        _log_with_request_id("Ask failed", getattr(request.state, "request_id", None))
         raise HTTPException(status_code=500, detail=f"Failed to process question: {exc}") from exc
     finally:
         observer.flush()
