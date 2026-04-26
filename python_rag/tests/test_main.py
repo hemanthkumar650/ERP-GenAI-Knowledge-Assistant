@@ -77,6 +77,11 @@ class AskPipeline:
         }
 
 
+class FailingAskPipeline(AskPipeline):
+    def answer(self, question: str, conversation_history: list[dict] | None = None) -> dict:
+        raise RuntimeError("simulated RAG failure")
+
+
 class StreamPipeline:
     def __init__(self) -> None:
         self.received_question: str | None = None
@@ -142,6 +147,23 @@ class PythonRagApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.observer.last_trace_metadata["request_id"], "trace-abc-123")
+
+    def test_ask_failure_logs_request_id(self) -> None:
+        rag_main.pipeline = FailingAskPipeline()
+
+        with patch.object(rag_main.logger, "exception") as mock_exc:
+            response = self.client.post(
+                "/ask",
+                json={"question": "What breaks?"},
+                headers={"X-Request-Id": "err-trace-xyz"},
+            )
+
+        self.assertEqual(response.status_code, 500)
+        mock_exc.assert_called()
+        fmt, msg, rid = mock_exc.call_args[0]
+        self.assertEqual(fmt, "%s request_id=%s")
+        self.assertEqual(msg, "Ask failed")
+        self.assertEqual(rid, "err-trace-xyz")
 
     def test_chunks_caps_limit_before_calling_pipeline(self) -> None:
         pipeline = ChunkPipeline()
