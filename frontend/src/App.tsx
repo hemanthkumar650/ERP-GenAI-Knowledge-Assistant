@@ -96,6 +96,27 @@ class HttpError extends Error {
   }
 }
 
+function createRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function withRequestId(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("X-Request-Id")) {
+    headers.set("X-Request-Id", createRequestId());
+  }
+
+  return { ...init, headers };
+}
+
+function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, withRequestId(init));
+}
+
 function throwIfNotOk(response: Response, data: unknown): void {
   if (response.ok) {
     return;
@@ -122,7 +143,7 @@ function App() {
 
   async function loadHealth() {
     try {
-      const response = await fetch("/api/health");
+      const response = await apiFetch("/api/health");
       const data = (await readApiPayload(response)) as HealthResponse;
       throwIfNotOk(response, data);
       setHealth(data);
@@ -137,7 +158,7 @@ function App() {
 
   async function loadChunks() {
     try {
-      const response = await fetch("/api/chunks?limit=6");
+      const response = await apiFetch("/api/chunks?limit=6");
       const data = await readApiPayload(response);
       throwIfNotOk(response, data);
       setChunks(Array.isArray(data.chunks) ? data.chunks : []);
@@ -162,7 +183,7 @@ function App() {
     setAnswer("Thinking through retrieved policy evidence...");
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -192,7 +213,7 @@ function App() {
     setLoading(true);
     setAnswer("Reindexing policy documents...");
     try {
-      const response = await fetch("/api/reindex", { method: "POST" });
+      const response = await apiFetch("/api/reindex", { method: "POST" });
       const data = await readApiPayload(response);
       throwIfNotOk(response, data);
       await loadHealth();

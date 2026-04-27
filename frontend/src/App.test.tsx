@@ -43,6 +43,29 @@ function findButton(container: HTMLElement, label: string): HTMLButtonElement {
   return button;
 }
 
+function getHeaderValue(headers: HeadersInit | undefined, name: string): string | null {
+  if (!headers) {
+    return null;
+  }
+
+  if (headers instanceof Headers) {
+    return headers.get(name);
+  }
+
+  if (Array.isArray(headers)) {
+    const pair = headers.find(([key]) => key.toLowerCase() === name.toLowerCase());
+    return pair ? pair[1] : null;
+  }
+
+  const record = headers as Record<string, string>;
+  for (const [key, value] of Object.entries(record)) {
+    if (key.toLowerCase() === name.toLowerCase()) {
+      return value;
+    }
+  }
+  return null;
+}
+
 describe("App", () => {
   let container: HTMLDivElement;
   let root: Root | null;
@@ -174,6 +197,7 @@ describe("App", () => {
 
       if (url === "/api/chat") {
         expect(init?.method).toBe("POST");
+        expect(getHeaderValue(init?.headers as HeadersInit | undefined, "x-request-id")).toBeTruthy();
         expect(init?.body).toBe(
           JSON.stringify({
             message: "What is the travel policy?",
