@@ -226,6 +226,13 @@ function App() {
     }
   }
 
+  function handleNewConversation() {
+    setConversationId(undefined);
+    setQuestion("");
+    setSources([]);
+    setAnswer("Ask a grounded ERP policy question to begin.");
+  }
+
   return (
     <div className="app">
       <div className="backdrop backdrop-left" />
@@ -272,6 +279,11 @@ function App() {
           <div className="panel-heading">
             <h2>Ask A Policy Question</h2>
             <span>{loading ? "Working..." : "Ready"}</span>
+          </div>
+          <div className="ask-actions">
+            <button type="button" className="ghost-button" onClick={handleNewConversation} disabled={loading}>
+              New Conversation
+            </button>
           </div>
           <form onSubmit={handleAsk} className="ask-form">
             <textarea

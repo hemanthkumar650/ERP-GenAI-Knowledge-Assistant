@@ -291,4 +291,61 @@ describe("App", () => {
     expect(container.textContent).toContain("erp-policy.pdf");
     expect(container.textContent).toContain("Updated chunk.");
   });
+
+  it("starts a new conversation by clearing chat state", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === "/api/health") {
+        return createJsonResponse({ status: "ok", indexed_chunks: 12 });
+      }
+
+      if (url === "/api/chunks?limit=6") {
+        return createJsonResponse({ chunks: [] });
+      }
+
+      if (url === "/api/chat") {
+        return createJsonResponse({
+          response: "Here is a policy answer.",
+          sources: ["policy.pdf"],
+          chunks: [],
+          conversationId: "session-1",
+          timestamp: "2026-03-22T12:00:00.000Z",
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await renderApp();
+
+    const textarea = container.querySelector("textarea");
+    const form = container.querySelector("form");
+
+    if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+      throw new Error("Expected ask form controls to exist.");
+    }
+
+    await act(async () => {
+      setTextareaValue(textarea, "What is policy?");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await flushUi();
+      await flushUi();
+    });
+
+    expect(container.textContent).toContain("active");
+    expect(container.textContent).toContain("policy.pdf");
+    expect(container.textContent).toContain("Here is a policy answer.");
+
+    await act(async () => {
+      findButton(container, "New Conversation").click();
+      await flushUi();
+    });
+
+    expect(container.textContent).toContain("new");
+    expect(container.textContent).toContain("No sources yet.");
+    expect(container.textContent).toContain("Ask a grounded ERP policy question to begin.");
+    expect(textarea.value).toBe("");
+  });
 });
