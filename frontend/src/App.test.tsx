@@ -140,6 +140,43 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("disables Get Answer until the question has non-whitespace text", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === "/api/health") {
+        return createJsonResponse({ status: "ok", indexed_chunks: 3 });
+      }
+      if (url === "/api/chunks?limit=6") {
+        return createJsonResponse({ chunks: [] });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await renderApp();
+
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      throw new Error("Expected textarea to exist.");
+    }
+
+    const getAnswer = findButton(container, "Get Answer");
+    expect(getAnswer.disabled).toBe(true);
+
+    await act(async () => {
+      setTextareaValue(textarea, "   \n\t  ");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      await flushUi();
+    });
+    expect(getAnswer.disabled).toBe(true);
+
+    await act(async () => {
+      setTextareaValue(textarea, "What is the travel policy?");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      await flushUi();
+    });
+    expect(getAnswer.disabled).toBe(false);
+  });
+
   it("shows a clear message when chat is rate limited (429)", async () => {
     fetchMock.mockImplementation(async (input) => {
       const url = String(input);

@@ -291,7 +291,7 @@ function App() {
               onChange={(event) => setQuestion(event.target.value)}
               placeholder="What is the company policy on expense reimbursement for remote staff?"
             />
-            <button type="submit" className="primary-button" disabled={loading}>
+            <button type="submit" className="primary-button" disabled={loading || !question.trim()}>
               Get Answer
             </button>
           </form>
