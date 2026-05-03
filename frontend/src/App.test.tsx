@@ -345,7 +345,13 @@ describe("App", () => {
         return createJsonResponse({
           response: "Here is a policy answer.",
           sources: ["policy.pdf"],
-          chunks: [],
+          chunks: [
+            {
+              source: "policy.pdf",
+              chunk_id: "chunk-prev",
+              text_preview: "Evidence from prior turn.",
+            },
+          ],
           conversationId: "session-1",
           timestamp: "2026-03-22T12:00:00.000Z",
         });
@@ -374,6 +380,7 @@ describe("App", () => {
     expect(container.textContent).toContain("active");
     expect(container.textContent).toContain("policy.pdf");
     expect(container.textContent).toContain("Here is a policy answer.");
+    expect(container.textContent).toContain("Evidence from prior turn.");
 
     await act(async () => {
       findButton(container, "New Conversation").click();
@@ -382,6 +389,8 @@ describe("App", () => {
 
     expect(container.textContent).toContain("new");
     expect(container.textContent).toContain("No sources yet.");
+    expect(container.textContent).toContain("No chunks loaded.");
+    expect(container.textContent).not.toContain("Evidence from prior turn.");
     expect(container.textContent).toContain("Ask a grounded ERP policy question to begin.");
     expect(textarea.value).toBe("");
   });

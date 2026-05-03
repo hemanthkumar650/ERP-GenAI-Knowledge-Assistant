@@ -230,6 +230,7 @@ function App() {
     setConversationId(undefined);
     setQuestion("");
     setSources([]);
+    setChunks([]);
     setAnswer("Ask a grounded ERP policy question to begin.");
   }
 
