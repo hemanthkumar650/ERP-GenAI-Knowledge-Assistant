@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useState } from "react";
 
 import "./App.css";
 
@@ -290,7 +290,19 @@ function App() {
             <textarea
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                if (event.key !== "Enter" || event.shiftKey) {
+                  return;
+                }
+                if (event.ctrlKey || event.metaKey) {
+                  event.preventDefault();
+                  if (!loading && question.trim()) {
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }
+              }}
               placeholder="What is the company policy on expense reimbursement for remote staff?"
+              title="Ctrl+Enter or ⌘+Enter submits; Shift+Enter adds a line."
             />
             <button type="submit" className="primary-button" disabled={loading || !question.trim()}>
               Get Answer
@@ -303,7 +315,9 @@ function App() {
             <h2>Grounded Answer</h2>
             <span>Azure OpenAI + Chroma</span>
           </div>
-          <pre>{answer}</pre>
+          <pre role="status" aria-live="polite" aria-busy={loading}>
+            {answer}
+          </pre>
         </section>
 
         <section className="panel">

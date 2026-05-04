@@ -214,6 +214,57 @@ describe("App", () => {
     expect(container.textContent).toContain("Too many requests");
   });
 
+  it("submits the question when pressing Ctrl+Enter in the textarea", async () => {
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input);
+
+      if (url === "/api/health") {
+        return createJsonResponse({ status: "ok", indexed_chunks: 4 });
+      }
+
+      if (url === "/api/chunks?limit=6") {
+        return createJsonResponse({ chunks: [] });
+      }
+
+      if (url === "/api/chat") {
+        expect(init?.method).toBe("POST");
+        expect(init?.body).toBe(
+          JSON.stringify({
+            message: "Shortcut question",
+            conversationId: undefined,
+          })
+        );
+        return createJsonResponse({
+          response: "Answer via keyboard shortcut.",
+          sources: [],
+          chunks: [],
+          timestamp: "2026-03-22T12:00:00.000Z",
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await renderApp();
+
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      throw new Error("Expected textarea to exist.");
+    }
+
+    await act(async () => {
+      setTextareaValue(textarea, "Shortcut question");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true, cancelable: true })
+      );
+      await flushUi();
+      await flushUi();
+    });
+
+    expect(container.textContent).toContain("Answer via keyboard shortcut.");
+  });
+
   it("submits a trimmed question and renders the answer state", async () => {
     let healthCalls = 0;
 
