@@ -214,6 +214,65 @@ describe("App", () => {
     expect(container.textContent).toContain("Too many requests");
   });
 
+  it("clears stale sources and chunks when chat request fails", async () => {
+    let chatCalls = 0;
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === "/api/health") {
+        return createJsonResponse({ status: "ok", indexed_chunks: 5 });
+      }
+      if (url === "/api/chunks?limit=6") {
+        return createJsonResponse({ chunks: [] });
+      }
+      if (url === "/api/chat") {
+        chatCalls += 1;
+        if (chatCalls === 1) {
+          return createJsonResponse({
+            response: "First answer.",
+            sources: ["policy-a.pdf"],
+            chunks: [{ source: "policy-a.pdf", chunk_id: "chunk-a", text_preview: "Old evidence." }],
+            timestamp: "2026-03-22T12:00:00.000Z",
+          });
+        }
+        return createJsonResponse({ error: "Too many requests" }, { ok: false, status: 429 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await renderApp();
+
+    const textarea = container.querySelector("textarea");
+    const form = container.querySelector("form");
+    if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+      throw new Error("Expected ask form controls to exist.");
+    }
+
+    await act(async () => {
+      setTextareaValue(textarea, "First");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await flushUi();
+      await flushUi();
+    });
+
+    expect(container.textContent).toContain("policy-a.pdf");
+    expect(container.textContent).toContain("Old evidence.");
+
+    await act(async () => {
+      setTextareaValue(textarea, "Second");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await flushUi();
+      await flushUi();
+    });
+
+    expect(container.textContent).toContain("Too many requests");
+    expect(container.textContent).toContain("No sources yet.");
+    expect(container.textContent).toContain("No chunks loaded.");
+    expect(container.textContent).not.toContain("Old evidence.");
+  });
+
   it("submits the question when pressing Ctrl+Enter in the textarea", async () => {
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input);

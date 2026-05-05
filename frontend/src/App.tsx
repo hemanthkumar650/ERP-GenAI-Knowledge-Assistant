@@ -203,6 +203,8 @@ function App() {
       setConversationId(data.conversationId);
       await loadHealth();
     } catch (error) {
+      setSources([]);
+      setChunks([]);
       setAnswer(error instanceof Error ? error.message : "Chat request failed.");
     } finally {
       setLoading(false);
