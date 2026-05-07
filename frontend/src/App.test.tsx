@@ -354,7 +354,7 @@ describe("App", () => {
 
         return createJsonResponse({
           response: "Travel must be approved by a manager.",
-          sources: ["travel-policy.pdf"],
+          sources: ["travel-policy.pdf", "travel-policy.pdf"],
           chunks: [
             {
               source: "travel-policy.pdf",
@@ -394,6 +394,7 @@ describe("App", () => {
     expect(container.textContent).toContain("travel-policy.pdf");
     expect(container.textContent).toContain("Approval is required.");
     expect(container.textContent).toContain("hybrid");
+    expect(container.textContent).toContain("1 file(s)");
     expect(container.textContent).toContain("active");
     expect(container.textContent).toContain("15");
   });

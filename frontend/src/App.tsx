@@ -117,6 +117,10 @@ function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
   return fetch(input, withRequestId(init));
 }
 
+function uniqueStrings(values: string[] | undefined): string[] {
+  return [...new Set((values ?? []).filter((value) => value.trim().length > 0))];
+}
+
 function throwIfNotOk(response: Response, data: unknown): void {
   if (response.ok) {
     return;
@@ -198,7 +202,7 @@ function App() {
       }
 
       setAnswer(data.response);
-      setSources(data.sources ?? []);
+      setSources(uniqueStrings(data.sources));
       setChunks(data.chunks ?? []);
       setConversationId(data.conversationId);
       await loadHealth();
