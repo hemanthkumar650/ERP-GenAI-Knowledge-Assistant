@@ -399,6 +399,75 @@ describe("App", () => {
     expect(container.textContent).toContain("15");
   });
 
+  it("copies the grounded answer with the clipboard API", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const original = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    try {
+      fetchMock.mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url === "/api/health") {
+          return createJsonResponse({ status: "ok", indexed_chunks: 9 });
+        }
+
+        if (url === "/api/chunks?limit=6") {
+          return createJsonResponse({ chunks: [] });
+        }
+
+        if (url === "/api/chat") {
+          return createJsonResponse({
+            response: "Policy summary for the user.",
+            sources: [],
+            chunks: [],
+            timestamp: "2026-03-22T12:00:00.000Z",
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      });
+
+      await renderApp();
+
+      const copy = findButton(container, "Copy answer");
+      expect(copy.disabled).toBe(true);
+
+      const textarea = container.querySelector("textarea");
+      const form = container.querySelector("form");
+      if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+        throw new Error("Expected ask form controls to exist.");
+      }
+
+      await act(async () => {
+        setTextareaValue(textarea, "Summarize the policy.");
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        await flushUi();
+        await flushUi();
+      });
+
+      const copyReady = findButton(container, "Copy answer");
+      expect(copyReady.disabled).toBe(false);
+
+      await act(async () => {
+        copyReady.click();
+        await flushUi();
+      });
+
+      expect(writeText).toHaveBeenCalledWith("Policy summary for the user.");
+    } finally {
+      if (original) {
+        Object.defineProperty(globalThis.navigator, "clipboard", original);
+      } else {
+        Reflect.deleteProperty(globalThis.navigator, "clipboard");
+      }
+    }
+  });
+
   it("reindexes documents and refreshes dashboard data", async () => {
     let healthCalls = 0;
 

@@ -121,6 +121,21 @@ function uniqueStrings(values: string[] | undefined): string[] {
   return [...new Set((values ?? []).filter((value) => value.trim().length > 0))];
 }
 
+const INITIAL_ANSWER_PROMPT = "Ask a grounded ERP policy question to begin.";
+
+function isCopyableAnswer(answer: string, busy: boolean): boolean {
+  if (busy) {
+    return false;
+  }
+  if (answer === INITIAL_ANSWER_PROMPT) {
+    return false;
+  }
+  if (answer === "Thinking through retrieved policy evidence..." || answer === "Reindexing policy documents...") {
+    return false;
+  }
+  return true;
+}
+
 function throwIfNotOk(response: Response, data: unknown): void {
   if (response.ok) {
     return;
@@ -138,7 +153,7 @@ function throwIfNotOk(response: Response, data: unknown): void {
 
 function App() {
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("Ask a grounded ERP policy question to begin.");
+  const [answer, setAnswer] = useState(INITIAL_ANSWER_PROMPT);
   const [sources, setSources] = useState<string[]>([]);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [health, setHealth] = useState<HealthResponse>({ status: "checking" });
@@ -237,7 +252,19 @@ function App() {
     setQuestion("");
     setSources([]);
     setChunks([]);
-    setAnswer("Ask a grounded ERP policy question to begin.");
+    setAnswer(INITIAL_ANSWER_PROMPT);
+  }
+
+  async function handleCopyAnswer() {
+    if (!isCopyableAnswer(answer, loading)) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(answer);
+    } catch {
+      // Clipboard may be unavailable or permission denied.
+    }
   }
 
   return (
@@ -319,7 +346,18 @@ function App() {
         <section className="panel answer-panel">
           <div className="panel-heading">
             <h2>Grounded Answer</h2>
-            <span>Azure OpenAI + Chroma</span>
+            <div className="panel-heading-aside">
+              <button
+                type="button"
+                className="ghost-button ghost-button--compact"
+                onClick={() => void handleCopyAnswer()}
+                disabled={!isCopyableAnswer(answer, loading)}
+                title="Copy the current answer text"
+              >
+                Copy answer
+              </button>
+              <span>Azure OpenAI + Chroma</span>
+            </div>
           </div>
           <pre role="status" aria-live="polite" aria-busy={loading}>
             {answer}

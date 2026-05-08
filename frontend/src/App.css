@@ -126,6 +126,11 @@ textarea {
   border: 1px solid rgba(36, 52, 71, 0.12);
 }
 
+.ghost-button--compact {
+  padding: 0.45rem 0.95rem;
+  font-size: 0.82rem;
+}
+
 .primary-button:hover,
 .ghost-button:hover {
   transform: translateY(-1px);
@@ -183,6 +188,14 @@ textarea {
   gap: 0.75rem;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.panel-heading-aside {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .panel-heading h2 {
