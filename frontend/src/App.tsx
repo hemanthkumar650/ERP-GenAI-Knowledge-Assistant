@@ -136,6 +136,15 @@ function isCopyableAnswer(answer: string, busy: boolean): boolean {
   return true;
 }
 
+function formatAnswerGeneratedAt(iso: string): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) {
+    return iso;
+  }
+
+  return new Date(ms).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
 function throwIfNotOk(response: Response, data: unknown): void {
   if (response.ok) {
     return;
@@ -159,6 +168,7 @@ function App() {
   const [health, setHealth] = useState<HealthResponse>({ status: "checking" });
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [answerGeneratedAt, setAnswerGeneratedAt] = useState<string | undefined>();
 
   async function loadHealth() {
     try {
@@ -220,10 +230,12 @@ function App() {
       setSources(uniqueStrings(data.sources));
       setChunks(data.chunks ?? []);
       setConversationId(data.conversationId);
+      setAnswerGeneratedAt(data.timestamp?.trim() || undefined);
       await loadHealth();
     } catch (error) {
       setSources([]);
       setChunks([]);
+      setAnswerGeneratedAt(undefined);
       setAnswer(error instanceof Error ? error.message : "Chat request failed.");
     } finally {
       setLoading(false);
@@ -232,6 +244,7 @@ function App() {
 
   async function handleReindex() {
     setLoading(true);
+    setAnswerGeneratedAt(undefined);
     setAnswer("Reindexing policy documents...");
     try {
       const response = await apiFetch("/api/reindex", { method: "POST" });
@@ -252,6 +265,7 @@ function App() {
     setQuestion("");
     setSources([]);
     setChunks([]);
+    setAnswerGeneratedAt(undefined);
     setAnswer(INITIAL_ANSWER_PROMPT);
   }
 
@@ -359,6 +373,14 @@ function App() {
               <span>Azure OpenAI + Chroma</span>
             </div>
           </div>
+          {answerGeneratedAt ? (
+            <p className="answer-generated">
+              <span className="answer-generated-label">Generated </span>
+              <time dateTime={answerGeneratedAt} aria-label={`Answer generated at ${answerGeneratedAt}`}>
+                {formatAnswerGeneratedAt(answerGeneratedAt)}
+              </time>
+            </p>
+          ) : null}
           <pre role="status" aria-live="polite" aria-busy={loading}>
             {answer}
           </pre>

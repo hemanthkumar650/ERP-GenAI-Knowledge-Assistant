@@ -233,6 +233,17 @@ code {
   color: var(--ink);
 }
 
+.answer-generated {
+  margin: 0 0 0.65rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.answer-generated-label {
+  color: var(--muted);
+}
+
 .answer-panel pre {
   margin: 0;
   white-space: pre-wrap;

@@ -271,6 +271,7 @@ describe("App", () => {
     expect(container.textContent).toContain("No sources yet.");
     expect(container.textContent).toContain("No chunks loaded.");
     expect(container.textContent).not.toContain("Old evidence.");
+    expect(container.querySelector(".answer-generated time")).toBeNull();
   });
 
   it("submits the question when pressing Ctrl+Enter in the textarea", async () => {
@@ -397,6 +398,10 @@ describe("App", () => {
     expect(container.textContent).toContain("1 file(s)");
     expect(container.textContent).toContain("active");
     expect(container.textContent).toContain("15");
+
+    const generated = container.querySelector(".answer-generated time");
+    expect(generated).not.toBeNull();
+    expect(generated?.getAttribute("dateTime")).toBe("2026-03-22T12:00:00.000Z");
   });
 
   it("copies the grounded answer with the clipboard API", async () => {
@@ -561,6 +566,7 @@ describe("App", () => {
     expect(container.textContent).toContain("policy.pdf");
     expect(container.textContent).toContain("Here is a policy answer.");
     expect(container.textContent).toContain("Evidence from prior turn.");
+    expect(container.querySelector(".answer-generated time")).not.toBeNull();
 
     await act(async () => {
       findButton(container, "New Conversation").click();
@@ -572,6 +578,7 @@ describe("App", () => {
     expect(container.textContent).toContain("No chunks loaded.");
     expect(container.textContent).not.toContain("Evidence from prior turn.");
     expect(container.textContent).toContain("Ask a grounded ERP policy question to begin.");
+    expect(container.querySelector(".answer-generated time")).toBeNull();
     expect(textarea.value).toBe("");
   });
 });
