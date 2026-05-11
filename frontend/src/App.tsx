@@ -118,7 +118,12 @@ function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
 }
 
 function uniqueStrings(values: string[] | undefined): string[] {
-  return [...new Set((values ?? []).filter((value) => value.trim().length > 0))];
+  // Avoid downlevel-iteration type errors by not spreading/iterating a `Set`.
+  const filtered = (values ?? []).filter((value) => value.trim().length > 0);
+  const set = new Set(filtered);
+  const result: string[] = [];
+  set.forEach((value) => result.push(value));
+  return result;
 }
 
 const INITIAL_ANSWER_PROMPT = "Ask a grounded ERP policy question to begin.";
@@ -137,6 +142,7 @@ function isCopyableAnswer(answer: string, busy: boolean): boolean {
 }
 
 function formatAnswerGeneratedAt(iso: string): string {
+  // TODO: allow user-configurable date/time formatting (e.g., 12h vs 24h) instead of using defaults.
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) {
     return iso;
