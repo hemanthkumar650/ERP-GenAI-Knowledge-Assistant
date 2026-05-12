@@ -141,14 +141,49 @@ function isCopyableAnswer(answer: string, busy: boolean): boolean {
   return true;
 }
 
-function formatAnswerGeneratedAt(iso: string): string {
-  // TODO: allow user-configurable date/time formatting (e.g., 12h vs 24h) instead of using defaults.
+type TimeDisplayPreference = "locale" | "12" | "24";
+
+const TIME_DISPLAY_STORAGE_KEY = "erp-assistant-time-display";
+
+function parseTimeDisplayPreference(raw: string | null): TimeDisplayPreference {
+  if (raw === "12" || raw === "24") {
+    return raw;
+  }
+  return "locale";
+}
+
+function readStoredTimeDisplayPreference(): TimeDisplayPreference {
+  try {
+    return parseTimeDisplayPreference(globalThis.localStorage?.getItem(TIME_DISPLAY_STORAGE_KEY) ?? null);
+  } catch {
+    return "locale";
+  }
+}
+
+function persistTimeDisplayPreference(value: TimeDisplayPreference) {
+  try {
+    globalThis.localStorage?.setItem(TIME_DISPLAY_STORAGE_KEY, value);
+  } catch {
+    // Storage may be unavailable or blocked.
+  }
+}
+
+function formatAnswerGeneratedAt(iso: string, preference: TimeDisplayPreference): string {
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) {
     return iso;
   }
 
-  return new Date(ms).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const date = new Date(ms);
+  if (preference === "locale") {
+    return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hour12: preference === "12",
+  });
 }
 
 function throwIfNotOk(response: Response, data: unknown): void {
@@ -175,6 +210,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [answerGeneratedAt, setAnswerGeneratedAt] = useState<string | undefined>();
+  const [timeDisplayPreference, setTimeDisplayPreference] = useState<TimeDisplayPreference>(readStoredTimeDisplayPreference);
 
   async function loadHealth() {
     try {
@@ -380,12 +416,30 @@ function App() {
             </div>
           </div>
           {answerGeneratedAt ? (
-            <p className="answer-generated">
-              <span className="answer-generated-label">Generated </span>
-              <time dateTime={answerGeneratedAt} aria-label={`Answer generated at ${answerGeneratedAt}`}>
-                {formatAnswerGeneratedAt(answerGeneratedAt)}
-              </time>
-            </p>
+            <div className="answer-generated-row">
+              <p className="answer-generated">
+                <span className="answer-generated-label">Generated </span>
+                <time dateTime={answerGeneratedAt} aria-label={`Answer generated at ${answerGeneratedAt}`}>
+                  {formatAnswerGeneratedAt(answerGeneratedAt, timeDisplayPreference)}
+                </time>
+              </p>
+              <label className="answer-time-format">
+                <span className="answer-time-format-label">Time</span>
+                <select
+                  value={timeDisplayPreference}
+                  onChange={(event) => {
+                    const next = event.target.value as TimeDisplayPreference;
+                    setTimeDisplayPreference(next);
+                    persistTimeDisplayPreference(next);
+                  }}
+                  aria-label="Clock style for generated timestamp"
+                >
+                  <option value="locale">Locale default</option>
+                  <option value="12">12-hour</option>
+                  <option value="24">24-hour</option>
+                </select>
+              </label>
+            </div>
           ) : null}
           <pre role="status" aria-live="polite" aria-busy={loading}>
             {answer}

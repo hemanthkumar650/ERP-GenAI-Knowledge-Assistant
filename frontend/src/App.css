@@ -233,15 +233,49 @@ code {
   color: var(--ink);
 }
 
-.answer-generated {
+.answer-generated-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin: 0 0 0.65rem;
+}
+
+.answer-generated {
+  margin: 0;
   font-size: 0.84rem;
   color: var(--muted);
   font-family: "IBM Plex Mono", monospace;
+  flex: 1;
+  min-width: 0;
 }
 
 .answer-generated-label {
   color: var(--muted);
+}
+
+.answer-time-format {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.answer-time-format-label {
+  font-family: "Space Grotesk", sans-serif;
+  white-space: nowrap;
+}
+
+.answer-time-format select {
+  font: inherit;
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(36, 52, 71, 0.2);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  cursor: pointer;
 }
 
 .answer-panel pre {

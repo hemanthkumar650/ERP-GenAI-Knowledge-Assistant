@@ -78,6 +78,7 @@ describe("App", () => {
     fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>;
     window.IS_REACT_ACT_ENVIRONMENT = true;
     global.fetch = fetchMock;
+    window.localStorage.removeItem("erp-assistant-time-display");
   });
 
   afterEach(async () => {
@@ -402,6 +403,68 @@ describe("App", () => {
     const generated = container.querySelector(".answer-generated time");
     expect(generated).not.toBeNull();
     expect(generated?.getAttribute("dateTime")).toBe("2026-03-22T12:00:00.000Z");
+
+    const timeFormat = container.querySelector<HTMLSelectElement>('select[aria-label="Clock style for generated timestamp"]');
+    expect(timeFormat).not.toBeNull();
+    expect(timeFormat?.value).toBe("locale");
+  });
+
+  it("persists the answer timestamp clock style preference", async () => {
+    window.localStorage.setItem("erp-assistant-time-display", "24");
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === "/api/health") {
+        return createJsonResponse({ status: "ok", indexed_chunks: 3 });
+      }
+
+      if (url === "/api/chunks?limit=6") {
+        return createJsonResponse({ chunks: [] });
+      }
+
+      if (url === "/api/chat") {
+        return createJsonResponse({
+          response: "Short policy reply.",
+          sources: [],
+          chunks: [],
+          timestamp: "2026-03-22T12:00:00.000Z",
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await renderApp();
+
+    const textarea = container.querySelector("textarea");
+    const form = container.querySelector("form");
+    if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+      throw new Error("Expected ask form controls to exist.");
+    }
+
+    await act(async () => {
+      setTextareaValue(textarea, "Any question?");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await flushUi();
+      await flushUi();
+    });
+
+    const timeFormat = container.querySelector<HTMLSelectElement>('select[aria-label="Clock style for generated timestamp"]');
+    expect(timeFormat?.value).toBe("24");
+
+    await act(async () => {
+      if (!timeFormat) {
+        throw new Error("Expected time format select.");
+      }
+      timeFormat.value = "12";
+      timeFormat.dispatchEvent(new Event("change", { bubbles: true }));
+      await flushUi();
+    });
+
+    expect(window.localStorage.getItem("erp-assistant-time-display")).toBe("12");
+    expect(timeFormat.value).toBe("12");
   });
 
   it("copies the grounded answer with the clipboard API", async () => {
