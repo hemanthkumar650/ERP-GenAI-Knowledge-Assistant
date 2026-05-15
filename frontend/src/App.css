@@ -131,6 +131,12 @@ textarea {
   font-size: 0.82rem;
 }
 
+.ghost-button--ack {
+  border-color: rgba(36, 52, 71, 0.28);
+  background: var(--mint);
+  color: var(--slate);
+}
+
 .primary-button:hover,
 .ghost-button:hover {
   transform: translateY(-1px);

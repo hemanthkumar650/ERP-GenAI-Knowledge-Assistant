@@ -127,6 +127,7 @@ function uniqueStrings(values: string[] | undefined): string[] {
 }
 
 const INITIAL_ANSWER_PROMPT = "Ask a grounded ERP policy question to begin.";
+const COPY_FEEDBACK_MS = 2000;
 
 function isCopyableAnswer(answer: string, busy: boolean): boolean {
   if (busy) {
@@ -211,6 +212,20 @@ function App() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [answerGeneratedAt, setAnswerGeneratedAt] = useState<string | undefined>();
   const [timeDisplayPreference, setTimeDisplayPreference] = useState<TimeDisplayPreference>(readStoredTimeDisplayPreference);
+  const [copyAcknowledged, setCopyAcknowledged] = useState(false);
+
+  useEffect(() => {
+    setCopyAcknowledged(false);
+  }, [answer, loading]);
+
+  useEffect(() => {
+    if (!copyAcknowledged) {
+      return;
+    }
+
+    const id = window.setTimeout(() => setCopyAcknowledged(false), COPY_FEEDBACK_MS);
+    return () => window.clearTimeout(id);
+  }, [copyAcknowledged]);
 
   async function loadHealth() {
     try {
@@ -318,6 +333,7 @@ function App() {
 
     try {
       await navigator.clipboard.writeText(answer);
+      setCopyAcknowledged(true);
     } catch {
       // Clipboard may be unavailable or permission denied.
     }
@@ -405,12 +421,13 @@ function App() {
             <div className="panel-heading-aside">
               <button
                 type="button"
-                className="ghost-button ghost-button--compact"
+                className={`ghost-button ghost-button--compact${copyAcknowledged ? " ghost-button--ack" : ""}`}
                 onClick={() => void handleCopyAnswer()}
                 disabled={!isCopyableAnswer(answer, loading)}
-                title="Copy the current answer text"
+                title={copyAcknowledged ? "Answer copied to clipboard" : "Copy the current answer text"}
+                aria-label={copyAcknowledged ? "Answer copied to clipboard" : "Copy the current answer text"}
               >
-                Copy answer
+                {copyAcknowledged ? "Copied!" : "Copy answer"}
               </button>
               <span>Azure OpenAI + Chroma</span>
             </div>

@@ -475,6 +475,7 @@ describe("App", () => {
       configurable: true,
     });
 
+    jest.useFakeTimers();
     try {
       fetchMock.mockImplementation(async (input) => {
         const url = String(input);
@@ -527,7 +528,15 @@ describe("App", () => {
       });
 
       expect(writeText).toHaveBeenCalledWith("Policy summary for the user.");
+      expect(findButton(container, "Copied!").className).toContain("ghost-button--ack");
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+        await flushUi();
+      });
+      expect(findButton(container, "Copy answer")).toBeTruthy();
     } finally {
+      jest.useRealTimers();
       if (original) {
         Object.defineProperty(globalThis.navigator, "clipboard", original);
       } else {
