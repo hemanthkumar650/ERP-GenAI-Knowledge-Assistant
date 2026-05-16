@@ -137,6 +137,12 @@ textarea {
   color: var(--slate);
 }
 
+.ghost-button--err {
+  border-color: rgba(143, 47, 20, 0.35);
+  background: rgba(213, 91, 45, 0.14);
+  color: var(--accent-deep);
+}
+
 .primary-button:hover,
 .ghost-button:hover {
   transform: translateY(-1px);

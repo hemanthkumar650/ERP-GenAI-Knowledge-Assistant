@@ -129,6 +129,8 @@ function uniqueStrings(values: string[] | undefined): string[] {
 const INITIAL_ANSWER_PROMPT = "Ask a grounded ERP policy question to begin.";
 const COPY_FEEDBACK_MS = 2000;
 
+type CopyFeedback = "idle" | "success" | "error";
+
 function isCopyableAnswer(answer: string, busy: boolean): boolean {
   if (busy) {
     return false;
@@ -212,20 +214,20 @@ function App() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [answerGeneratedAt, setAnswerGeneratedAt] = useState<string | undefined>();
   const [timeDisplayPreference, setTimeDisplayPreference] = useState<TimeDisplayPreference>(readStoredTimeDisplayPreference);
-  const [copyAcknowledged, setCopyAcknowledged] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>("idle");
 
   useEffect(() => {
-    setCopyAcknowledged(false);
+    setCopyFeedback("idle");
   }, [answer, loading]);
 
   useEffect(() => {
-    if (!copyAcknowledged) {
+    if (copyFeedback === "idle") {
       return;
     }
 
-    const id = window.setTimeout(() => setCopyAcknowledged(false), COPY_FEEDBACK_MS);
+    const id = window.setTimeout(() => setCopyFeedback("idle"), COPY_FEEDBACK_MS);
     return () => window.clearTimeout(id);
-  }, [copyAcknowledged]);
+  }, [copyFeedback]);
 
   async function loadHealth() {
     try {
@@ -333,11 +335,20 @@ function App() {
 
     try {
       await navigator.clipboard.writeText(answer);
-      setCopyAcknowledged(true);
+      setCopyFeedback("success");
     } catch {
-      // Clipboard may be unavailable or permission denied.
+      setCopyFeedback("error");
     }
   }
+
+  const copyButtonLabel =
+    copyFeedback === "success" ? "Copied!" : copyFeedback === "error" ? "Copy failed" : "Copy answer";
+  const copyButtonTitle =
+    copyFeedback === "success"
+      ? "Answer copied to clipboard"
+      : copyFeedback === "error"
+        ? "Could not copy to clipboard"
+        : "Copy the current answer text";
 
   return (
     <div className="app">
@@ -421,13 +432,15 @@ function App() {
             <div className="panel-heading-aside">
               <button
                 type="button"
-                className={`ghost-button ghost-button--compact${copyAcknowledged ? " ghost-button--ack" : ""}`}
+                className={`ghost-button ghost-button--compact${
+                  copyFeedback === "success" ? " ghost-button--ack" : copyFeedback === "error" ? " ghost-button--err" : ""
+                }`}
                 onClick={() => void handleCopyAnswer()}
                 disabled={!isCopyableAnswer(answer, loading)}
-                title={copyAcknowledged ? "Answer copied to clipboard" : "Copy the current answer text"}
-                aria-label={copyAcknowledged ? "Answer copied to clipboard" : "Copy the current answer text"}
+                title={copyButtonTitle}
+                aria-label={copyButtonTitle}
               >
-                {copyAcknowledged ? "Copied!" : "Copy answer"}
+                {copyButtonLabel}
               </button>
               <span>Azure OpenAI + Chroma</span>
             </div>

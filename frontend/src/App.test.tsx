@@ -545,6 +545,77 @@ describe("App", () => {
     }
   });
 
+  it("shows copy failed when the clipboard API rejects", async () => {
+    const writeText = jest.fn().mockRejectedValue(new Error("Clipboard denied"));
+    const original = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    jest.useFakeTimers();
+    try {
+      fetchMock.mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url === "/api/health") {
+          return createJsonResponse({ status: "ok", indexed_chunks: 4 });
+        }
+
+        if (url === "/api/chunks?limit=6") {
+          return createJsonResponse({ chunks: [] });
+        }
+
+        if (url === "/api/chat") {
+          return createJsonResponse({
+            response: "Policy text to copy.",
+            sources: [],
+            chunks: [],
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      });
+
+      await renderApp();
+
+      const textarea = container.querySelector("textarea");
+      const form = container.querySelector("form");
+      if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+        throw new Error("Expected ask form controls to exist.");
+      }
+
+      await act(async () => {
+        setTextareaValue(textarea, "Copy this answer");
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        await flushUi();
+        await flushUi();
+      });
+
+      const copyReady = findButton(container, "Copy answer");
+      await act(async () => {
+        copyReady.click();
+        await flushUi();
+      });
+
+      expect(findButton(container, "Copy failed").className).toContain("ghost-button--err");
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+        await flushUi();
+      });
+      expect(findButton(container, "Copy answer")).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+      if (original) {
+        Object.defineProperty(globalThis.navigator, "clipboard", original);
+      } else {
+        Reflect.deleteProperty(globalThis.navigator, "clipboard");
+      }
+    }
+  });
+
   it("reindexes documents and refreshes dashboard data", async () => {
     let healthCalls = 0;
 
