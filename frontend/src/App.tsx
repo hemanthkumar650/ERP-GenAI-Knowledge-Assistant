@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, useEffect, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useState } from "react";
 
 import "./App.css";
 
@@ -128,6 +128,7 @@ function uniqueStrings(values: string[] | undefined): string[] {
 
 const INITIAL_ANSWER_PROMPT = "Ask a grounded ERP policy question to begin.";
 const COPY_FEEDBACK_MS = 2000;
+const COPY_ANSWER_SHORTCUT_HINT = "Ctrl+Shift+C or ⌘+Shift+C";
 
 type CopyFeedback = "idle" | "success" | "error";
 
@@ -328,7 +329,7 @@ function App() {
     setAnswer(INITIAL_ANSWER_PROMPT);
   }
 
-  async function handleCopyAnswer() {
+  const handleCopyAnswer = useCallback(async () => {
     if (!isCopyableAnswer(answer, loading)) {
       return;
     }
@@ -339,7 +340,24 @@ function App() {
     } catch {
       setCopyFeedback("error");
     }
-  }
+  }, [answer, loading]);
+
+  useEffect(() => {
+    function onDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key.toLowerCase() !== "c" || !event.shiftKey || !(event.ctrlKey || event.metaKey)) {
+        return;
+      }
+      if (!isCopyableAnswer(answer, loading)) {
+        return;
+      }
+
+      event.preventDefault();
+      void handleCopyAnswer();
+    }
+
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => document.removeEventListener("keydown", onDocumentKeyDown);
+  }, [answer, loading, handleCopyAnswer]);
 
   const copyButtonLabel =
     copyFeedback === "success" ? "Copied!" : copyFeedback === "error" ? "Copy failed" : "Copy answer";
@@ -348,7 +366,7 @@ function App() {
       ? "Answer copied to clipboard"
       : copyFeedback === "error"
         ? "Could not copy to clipboard"
-        : "Copy the current answer text";
+        : `Copy the current answer text (${COPY_ANSWER_SHORTCUT_HINT})`;
 
   return (
     <div className="app">

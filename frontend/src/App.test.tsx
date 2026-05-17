@@ -467,6 +467,71 @@ describe("App", () => {
     expect(timeFormat.value).toBe("12");
   });
 
+  it("copies the answer when pressing Ctrl+Shift+C", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const original = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    try {
+      fetchMock.mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url === "/api/health") {
+          return createJsonResponse({ status: "ok", indexed_chunks: 6 });
+        }
+
+        if (url === "/api/chunks?limit=6") {
+          return createJsonResponse({ chunks: [] });
+        }
+
+        if (url === "/api/chat") {
+          return createJsonResponse({
+            response: "Answer for keyboard copy.",
+            sources: [],
+            chunks: [],
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      });
+
+      await renderApp();
+
+      const textarea = container.querySelector("textarea");
+      const form = container.querySelector("form");
+      if (!(textarea instanceof HTMLTextAreaElement) || !(form instanceof HTMLFormElement)) {
+        throw new Error("Expected ask form controls to exist.");
+      }
+
+      await act(async () => {
+        setTextareaValue(textarea, "Copy via shortcut");
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        await flushUi();
+        await flushUi();
+      });
+
+      await act(async () => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "c", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true })
+        );
+        await flushUi();
+      });
+
+      expect(writeText).toHaveBeenCalledWith("Answer for keyboard copy.");
+      expect(findButton(container, "Copied!")).toBeTruthy();
+    } finally {
+      if (original) {
+        Object.defineProperty(globalThis.navigator, "clipboard", original);
+      } else {
+        Reflect.deleteProperty(globalThis.navigator, "clipboard");
+      }
+    }
+  });
+
   it("copies the grounded answer with the clipboard API", async () => {
     const writeText = jest.fn().mockResolvedValue(undefined);
     const original = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
