@@ -109,6 +109,31 @@ async function main() {
   });
   });
 
+  await runTest("GET /api/chunks normalizes invalid and oversized limits", async () => {
+  const receivedLimits = [];
+  const service = createFakeService();
+  service.getChunks = async (limit = 12) => {
+    receivedLimits.push(limit);
+    return { chunks: [] };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const invalidResponse = await fetch(`${baseUrl}/api/chunks?limit=abc`);
+    assert.equal(invalidResponse.status, 200);
+
+    const zeroResponse = await fetch(`${baseUrl}/api/chunks?limit=0`);
+    assert.equal(zeroResponse.status, 200);
+
+    const hugeResponse = await fetch(`${baseUrl}/api/chunks?limit=999`);
+    assert.equal(hugeResponse.status, 200);
+
+    const decimalResponse = await fetch(`${baseUrl}/api/chunks?limit=4.9`);
+    assert.equal(decimalResponse.status, 200);
+  });
+
+  assert.deepEqual(receivedLimits, [12, 1, 50, 4]);
+  });
+
   await runTest("POST /api/chat rejects a blank message", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/chat`, {

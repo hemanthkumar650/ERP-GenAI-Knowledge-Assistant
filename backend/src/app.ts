@@ -12,6 +12,15 @@ import createChatRouter from "./routes/chat";
 import createSearchRouter from "./routes/search";
 import { ragService, RagService } from "./services/ragService";
 
+function normalizeChunkLimit(rawLimit: unknown, fallback = 12, max = 50): number {
+  const parsed = Number(rawLimit);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(Math.trunc(parsed), 1), max);
+}
+
 export function createApp(service: RagService = ragService) {
   const app = express();
 
@@ -43,7 +52,7 @@ export function createApp(service: RagService = ragService) {
 
   app.get("/api/chunks", async (req, res, next) => {
     try {
-      const limit = Number(req.query.limit ?? 12);
+      const limit = normalizeChunkLimit(req.query.limit);
       const data = await service.getChunks(limit, req.requestId);
       res.json(data);
     } catch (error) {
