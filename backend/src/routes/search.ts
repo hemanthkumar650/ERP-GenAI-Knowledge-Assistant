@@ -3,6 +3,15 @@ import { Router } from "express";
 import { RagService } from "../services/ragService";
 import { SearchRequest, SearchResponse } from "../types";
 
+function normalizeTopK(rawTopK: unknown, fallback = 3, max = 10): number {
+  const parsed = Number(rawTopK);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(Math.trunc(parsed), 1), max);
+}
+
 export default function createSearchRouter(ragService: RagService) {
   const router = Router();
 
@@ -15,7 +24,8 @@ export default function createSearchRouter(ragService: RagService) {
         return res.status(400).json({ error: "query is required" });
       }
 
-      const data = await ragService.searchDocuments(query, body.topK ?? 3, req.requestId);
+      const topK = normalizeTopK(body.topK);
+      const data = await ragService.searchDocuments(query, topK, req.requestId);
       const response: SearchResponse = {
         results: data.results ?? [],
         count: data.count ?? 0,

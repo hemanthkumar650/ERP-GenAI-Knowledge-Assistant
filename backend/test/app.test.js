@@ -209,6 +209,50 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search normalizes invalid and oversized topK values", async () => {
+  const receivedTopKs = [];
+  const service = createFakeService();
+  service.searchDocuments = async (_query, topK = 3) => {
+    receivedTopKs.push(topK);
+    return {
+      results: [],
+      count: 0,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const invalidResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: "abc" }),
+    });
+    assert.equal(invalidResponse.status, 200);
+
+    const zeroResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: 0 }),
+    });
+    assert.equal(zeroResponse.status, 200);
+
+    const hugeResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: 99 }),
+    });
+    assert.equal(hugeResponse.status, 200);
+
+    const decimalResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: 4.8 }),
+    });
+    assert.equal(decimalResponse.status, 200);
+  });
+
+  assert.deepEqual(receivedTopKs, [3, 1, 10, 4]);
+  });
+
   await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {
     let seenId;
     const service = createFakeService();
