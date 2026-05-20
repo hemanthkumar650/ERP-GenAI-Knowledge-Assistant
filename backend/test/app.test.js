@@ -180,6 +180,40 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat normalizes conversationId before forwarding", async () => {
+  const seenConversationIds = [];
+  const service = createFakeService();
+  service.askQuestion = async (_message, conversationId) => {
+    seenConversationIds.push(conversationId);
+    return {
+      answer: "ok",
+      sources: [],
+      chunks: [],
+      session_id: conversationId,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const trimmedResponse = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: "  session-42  " }),
+    });
+    assert.equal(trimmedResponse.status, 200);
+    assert.equal((await trimmedResponse.json()).conversationId, "session-42");
+
+    const blankResponse = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: "   " }),
+    });
+    assert.equal(blankResponse.status, 200);
+    assert.equal((await blankResponse.json()).conversationId, undefined);
+  });
+
+  assert.deepEqual(seenConversationIds, ["session-42", undefined]);
+  });
+
   await runTest("POST /api/search uses the default topK and returns mapped results", async () => {
   let receivedArgs;
   const service = createFakeService();
