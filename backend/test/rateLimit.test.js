@@ -70,6 +70,26 @@ async function main() {
     });
   });
 
+  await runTest("OPTIONS preflight requests do not consume the API rate limit", async () => {
+    await withServer(createFakeService(), async (baseUrl) => {
+      for (let i = 0; i < 8; i += 1) {
+        const preflight = await fetch(`${baseUrl}/api/chat`, {
+          method: "OPTIONS",
+          headers: {
+            Origin: "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+          },
+        });
+        assert.equal(preflight.status, 204, `preflight request ${i + 1} should succeed`);
+      }
+
+      for (let i = 0; i < 3; i += 1) {
+        const ok = await fetch(`${baseUrl}/api/chunks?limit=1`);
+        assert.equal(ok.status, 200, `request ${i + 1} should still succeed`);
+      }
+    });
+  });
+
   await runTest("/health (non-API) is not subject to the rate limiter", async () => {
     await withServer(createFakeService(), async (baseUrl) => {
       for (let i = 0; i < 6; i += 1) {
