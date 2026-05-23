@@ -315,6 +315,40 @@ async function main() {
     });
   });
 
+  await runTest("unknown routes return a JSON 404 with requestId", async () => {
+    await withServer(createFakeService(), async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/does-not-exist`, {
+        headers: { "X-Request-Id": "missing-route-test" },
+      });
+
+      assert.equal(response.status, 404);
+      assert.match(response.headers.get("content-type") ?? "", /application\/json/);
+      assert.deepEqual(await response.json(), {
+        error: "Route not found",
+        requestId: "missing-route-test",
+      });
+    });
+  });
+
+  await runTest("malformed JSON requests return a JSON 400 with requestId", async () => {
+    await withServer(createFakeService(), async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "X-Request-Id": "bad-json-test",
+        },
+        body: '{"message":',
+      });
+
+      assert.equal(response.status, 400);
+      assert.match(response.headers.get("content-type") ?? "", /application\/json/);
+      const body = await response.json();
+      assert.match(body.error, /json/i);
+      assert.equal(body.requestId, "bad-json-test");
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }

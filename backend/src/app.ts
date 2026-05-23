@@ -21,6 +21,16 @@ function normalizeChunkLimit(rawLimit: unknown, fallback = 12, max = 50): number
   return Math.min(Math.max(Math.trunc(parsed), 1), max);
 }
 
+function errorStatus(error: unknown): number {
+  if (typeof error !== "object" || error === null) {
+    return 500;
+  }
+
+  const candidate =
+    "status" in error ? error.status : "statusCode" in error ? error.statusCode : undefined;
+  return typeof candidate === "number" && candidate >= 400 && candidate < 600 ? candidate : 500;
+}
+
 export function createApp(service: RagService = ragService) {
   const app = express();
 
@@ -72,12 +82,23 @@ export function createApp(service: RagService = ragService) {
   app.use("/api/chat", createChatRouter(service));
   app.use("/api/search", createSearchRouter(service));
 
+  app.use((req, res, next) => {
+    if (res.headersSent) {
+      return next();
+    }
+
+    return res.status(404).json({
+      error: "Route not found",
+      requestId: req.requestId,
+    });
+  });
+
   app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message =
       error instanceof Error
         ? error.message
         : "Unexpected backend error while calling the Python RAG service.";
-    res.status(500).json({ error: message, requestId: req.requestId });
+    res.status(errorStatus(error)).json({ error: message, requestId: req.requestId });
   });
 
   return app;
