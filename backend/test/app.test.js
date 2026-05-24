@@ -81,6 +81,20 @@ async function main() {
   });
   });
 
+  await runTest("replaces unsafe incoming X-Request-Id headers", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: { "X-Request-Id": "bad id with spaces" },
+    });
+
+    assert.equal(response.status, 200);
+    const requestId = response.headers.get("x-request-id");
+    assert.ok(requestId && requestId.length > 0);
+    assert.notEqual(requestId, "bad id with spaces");
+    assert.match(requestId, /^[a-zA-Z0-9._-]+$/);
+  });
+  });
+
   await runTest("GET /api/health proxies the RAG health payload", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/health`);
