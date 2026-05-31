@@ -81,6 +81,17 @@ async function main() {
   });
   });
 
+  await runTest("trims safe incoming X-Request-Id headers before echoing", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: { "X-Request-Id": "  trace-from-gateway-2  " },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-request-id"), "trace-from-gateway-2");
+  });
+  });
+
   await runTest("replaces unsafe incoming X-Request-Id headers", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/health`, {
