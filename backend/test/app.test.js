@@ -172,6 +172,19 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat rejects a non-string message", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: 42 }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "message is required" });
+  });
+  });
+
   await runTest("POST /api/chat trims the message and returns the normalized response", async () => {
   let receivedArgs;
   const service = createFakeService();
@@ -265,6 +278,19 @@ async function main() {
     assert.equal(receivedArgs.query, "expense reimbursement");
     assert.equal(receivedArgs.topK, 3);
     assert.ok(typeof receivedArgs.requestId === "string" && receivedArgs.requestId.length > 0);
+  });
+  });
+
+  await runTest("POST /api/search rejects a non-string query", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: 42 }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "query is required" });
   });
   });
 

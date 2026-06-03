@@ -3,6 +3,15 @@ import { Router } from "express";
 import { RagService } from "../services/ragService";
 import { ChatRequest, ChatResponse } from "../types";
 
+function normalizeText(rawText: unknown): string | undefined {
+  if (typeof rawText !== "string") {
+    return undefined;
+  }
+
+  const normalized = rawText.trim();
+  return normalized || undefined;
+}
+
 function normalizeConversationId(rawConversationId: unknown): string | undefined {
   if (typeof rawConversationId !== "string") {
     return undefined;
@@ -18,7 +27,7 @@ export default function createChatRouter(ragService: RagService) {
   router.post("/", async (req, res, next) => {
     try {
       const body = req.body as ChatRequest;
-      const message = body.message?.trim();
+      const message = normalizeText(body.message);
       const conversationId = normalizeConversationId(body.conversationId);
 
       if (!message) {
