@@ -159,6 +159,26 @@ async function main() {
   assert.deepEqual(receivedLimits, [12, 1, 50, 4]);
   });
 
+  await runTest("POST /api/reindex passes backend X-Request-Id to the RAG service", async () => {
+  let seenId;
+  const service = createFakeService();
+  service.reindexDocuments = async (requestId) => {
+    seenId = requestId;
+    return { status: "ok", indexed_chunks: 21 };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/reindex`, {
+      method: "POST",
+      headers: { "X-Request-Id": "reindex-trace-123" },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok", indexed_chunks: 21 });
+    assert.equal(seenId, "reindex-trace-123");
+  });
+  });
+
   await runTest("POST /api/chat rejects a blank message", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/chat`, {
