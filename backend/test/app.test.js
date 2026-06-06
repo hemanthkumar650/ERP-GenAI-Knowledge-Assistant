@@ -118,6 +118,29 @@ async function main() {
   });
   });
 
+  await runTest("GET /api/health passes backend X-Request-Id to the RAG service", async () => {
+  let seenId;
+  const service = createFakeService();
+  service.getHealth = async (requestId) => {
+    seenId = requestId;
+    return { status: "ok", vector_db_loaded: true, indexed_chunks: 14 };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/health`, {
+      headers: { "X-Request-Id": "health-trace-123" },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      status: "ok",
+      vector_db_loaded: true,
+      indexed_chunks: 14,
+    });
+    assert.equal(seenId, "health-trace-123");
+  });
+  });
+
   await runTest("GET /api/chunks forwards the requested limit", async () => {
   let receivedLimit;
   const service = createFakeService();
