@@ -157,6 +157,25 @@ async function main() {
   });
   });
 
+  await runTest("GET /api/chunks passes backend X-Request-Id to the RAG service", async () => {
+  let seenArgs;
+  const service = createFakeService();
+  service.getChunks = async (limit = 12, requestId) => {
+    seenArgs = { limit, requestId };
+    return { chunks: [] };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chunks?limit=5`, {
+      headers: { "X-Request-Id": "chunks-trace-123" },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { chunks: [] });
+    assert.deepEqual(seenArgs, { limit: 5, requestId: "chunks-trace-123" });
+  });
+  });
+
   await runTest("GET /api/chunks normalizes invalid and oversized limits", async () => {
   const receivedLimits = [];
   const service = createFakeService();
