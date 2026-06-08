@@ -343,6 +343,37 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search passes backend X-Request-Id to the RAG service", async () => {
+  let seenArgs;
+  const service = createFakeService();
+  service.searchDocuments = async (query, topK = 3, requestId) => {
+    seenArgs = { query, topK, requestId };
+    return {
+      results: [],
+      count: 0,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "X-Request-Id": "search-trace-123",
+      },
+      body: JSON.stringify({ query: " expense reimbursement ", topK: 4 }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { results: [], count: 0 });
+    assert.deepEqual(seenArgs, {
+      query: "expense reimbursement",
+      topK: 4,
+      requestId: "search-trace-123",
+    });
+  });
+  });
+
   await runTest("POST /api/search rejects a non-string query", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/search`, {
