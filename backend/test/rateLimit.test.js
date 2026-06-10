@@ -61,6 +61,25 @@ async function main() {
     });
   });
 
+  await runTest("rate limit responses preserve incoming X-Request-Id", async () => {
+    await withServer(createFakeService(), async (baseUrl) => {
+      for (let i = 0; i < 3; i += 1) {
+        const ok = await fetch(`${baseUrl}/api/chunks?limit=1`);
+        assert.equal(ok.status, 200, `request ${i + 1} should succeed`);
+      }
+
+      const limited = await fetch(`${baseUrl}/api/chunks?limit=1`, {
+        headers: { "X-Request-Id": "rate-limit-trace-123" },
+      });
+      assert.equal(limited.status, 429);
+      assert.equal(limited.headers.get("x-request-id"), "rate-limit-trace-123");
+      assert.deepEqual(await limited.json(), {
+        error: "Too many requests. Please slow down and try again in a few moments.",
+        requestId: "rate-limit-trace-123",
+      });
+    });
+  });
+
   await runTest("GET /api/health is not counted toward the rate limit", async () => {
     await withServer(createFakeService(), async (baseUrl) => {
       for (let i = 0; i < 10; i += 1) {
