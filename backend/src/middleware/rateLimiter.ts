@@ -36,7 +36,8 @@ export function createApiRateLimiter(): RequestHandler {
     // Cheap status probe; the UI polls this often. Also skip CORS preflight traffic.
     skip: (req) => {
       const path = req.originalUrl.split("?")[0] ?? "";
-      return req.method === "OPTIONS" || (req.method === "GET" && path === "/api/health");
+      const isHealthProbe = (req.method === "GET" || req.method === "HEAD") && path === "/api/health";
+      return req.method === "OPTIONS" || isHealthProbe;
     },
   });
 }
