@@ -18,6 +18,11 @@ const rateLimitJsonHandler: RateLimitExceededEventHandler = (req, res, _next, op
   });
 };
 
+function normalizedPath(originalUrl: string): string {
+  const path = originalUrl.split("?")[0] || "/";
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
+}
+
 export function createApiRateLimiter(): RequestHandler {
   if (environment.rateLimit.disabled) {
     return (_req, _res, next) => next();
@@ -35,7 +40,7 @@ export function createApiRateLimiter(): RequestHandler {
     handler: rateLimitJsonHandler,
     // Cheap status probe; the UI polls this often. Also skip CORS preflight traffic.
     skip: (req) => {
-      const path = req.originalUrl.split("?")[0] ?? "";
+      const path = normalizedPath(req.originalUrl);
       const isHealthProbe = (req.method === "GET" || req.method === "HEAD") && path === "/api/health";
       return req.method === "OPTIONS" || isHealthProbe;
     },
