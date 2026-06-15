@@ -117,6 +117,20 @@ async function main() {
     });
   });
 
+  await runTest("HEAD /api/health with trailing slash is not counted toward the rate limit", async () => {
+    await withServer(createFakeService(), async (baseUrl) => {
+      for (let i = 0; i < 10; i += 1) {
+        const response = await fetch(`${baseUrl}/api/health/`, { method: "HEAD" });
+        assert.equal(response.status, 200, `health slash head request ${i + 1} should succeed`);
+      }
+
+      for (let i = 0; i < 3; i += 1) {
+        const ok = await fetch(`${baseUrl}/api/chunks?limit=1`);
+        assert.equal(ok.status, 200, `request ${i + 1} should still succeed`);
+      }
+    });
+  });
+
   await runTest("OPTIONS preflight requests do not consume the API rate limit", async () => {
     await withServer(createFakeService(), async (baseUrl) => {
       for (let i = 0; i < 8; i += 1) {
