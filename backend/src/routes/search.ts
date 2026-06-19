@@ -13,6 +13,14 @@ function normalizeText(rawText: unknown): string | undefined {
 }
 
 function normalizeTopK(rawTopK: unknown, fallback = 3, max = 10): number {
+  if (rawTopK === null || rawTopK === undefined) {
+    return fallback;
+  }
+
+  if (typeof rawTopK === "string" && rawTopK.trim() === "") {
+    return fallback;
+  }
+
   const parsed = Number(rawTopK);
   if (!Number.isFinite(parsed)) {
     return fallback;

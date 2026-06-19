@@ -448,6 +448,20 @@ async function main() {
     });
     assert.equal(invalidResponse.status, 200);
 
+    const nullResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: null }),
+    });
+    assert.equal(nullResponse.status, 200);
+
+    const blankResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: "   " }),
+    });
+    assert.equal(blankResponse.status, 200);
+
     const zeroResponse = await fetch(`${baseUrl}/api/search`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -470,7 +484,7 @@ async function main() {
     assert.equal(decimalResponse.status, 200);
   });
 
-  assert.deepEqual(receivedTopKs, [3, 1, 10, 4]);
+  assert.deepEqual(receivedTopKs, [3, 3, 3, 1, 10, 4]);
   });
 
   await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {
