@@ -330,6 +330,32 @@ async function main() {
   assert.deepEqual(seenConversationIds, ["session-42", undefined]);
   });
 
+  await runTest("POST /api/chat ignores non-string conversationId values", async () => {
+  let seenConversationId = "not-called";
+  const service = createFakeService();
+  service.askQuestion = async (_message, conversationId) => {
+    seenConversationId = conversationId;
+    return {
+      answer: "ok",
+      sources: [],
+      chunks: [],
+      session_id: conversationId,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: 42 }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).conversationId, undefined);
+    assert.equal(seenConversationId, undefined);
+  });
+  });
+
   await runTest("POST /api/search uses the default topK and returns mapped results", async () => {
   let receivedArgs;
   const service = createFakeService();
