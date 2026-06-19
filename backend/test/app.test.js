@@ -106,6 +106,22 @@ async function main() {
   });
   });
 
+  await runTest("replaces overlong incoming X-Request-Id headers", async () => {
+  const overlongRequestId = "a".repeat(129);
+
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: { "X-Request-Id": overlongRequestId },
+    });
+
+    assert.equal(response.status, 200);
+    const requestId = response.headers.get("x-request-id");
+    assert.ok(requestId && requestId.length > 0);
+    assert.notEqual(requestId, overlongRequestId);
+    assert.match(requestId, /^[a-zA-Z0-9._-]+$/);
+  });
+  });
+
   await runTest("GET /api/health proxies the RAG health payload", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/health`);
