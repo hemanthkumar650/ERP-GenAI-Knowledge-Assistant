@@ -204,6 +204,9 @@ async function main() {
     const invalidResponse = await fetch(`${baseUrl}/api/chunks?limit=abc`);
     assert.equal(invalidResponse.status, 200);
 
+    const blankResponse = await fetch(`${baseUrl}/api/chunks?limit=   `);
+    assert.equal(blankResponse.status, 200);
+
     const zeroResponse = await fetch(`${baseUrl}/api/chunks?limit=0`);
     assert.equal(zeroResponse.status, 200);
 
@@ -214,7 +217,7 @@ async function main() {
     assert.equal(decimalResponse.status, 200);
   });
 
-  assert.deepEqual(receivedLimits, [12, 1, 50, 4]);
+  assert.deepEqual(receivedLimits, [12, 12, 1, 50, 4]);
   });
 
   await runTest("POST /api/reindex passes backend X-Request-Id to the RAG service", async () => {

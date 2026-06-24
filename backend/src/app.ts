@@ -13,6 +13,14 @@ import createSearchRouter from "./routes/search";
 import { ragService, RagService } from "./services/ragService";
 
 function normalizeChunkLimit(rawLimit: unknown, fallback = 12, max = 50): number {
+  if (rawLimit === null || rawLimit === undefined) {
+    return fallback;
+  }
+
+  if (typeof rawLimit === "string" && rawLimit.trim() === "") {
+    return fallback;
+  }
+
   const parsed = Number(rawLimit);
   if (!Number.isFinite(parsed)) {
     return fallback;
