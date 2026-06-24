@@ -26,7 +26,7 @@ export default function createChatRouter(ragService: RagService) {
 
   router.post("/", async (req, res, next) => {
     try {
-      const body = req.body as ChatRequest;
+      const body = (req.body ?? {}) as Partial<ChatRequest>;
       const message = normalizeText(body.message);
       const conversationId = normalizeConversationId(body.conversationId);
 

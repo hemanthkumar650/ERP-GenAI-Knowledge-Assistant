@@ -263,6 +263,17 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat rejects a missing body", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "message is required" });
+  });
+  });
+
   await runTest("POST /api/chat trims the message and returns the normalized response", async () => {
   let receivedArgs;
   const service = createFakeService();
@@ -422,6 +433,17 @@ async function main() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: 42 }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "query is required" });
+  });
+  });
+
+  await runTest("POST /api/search rejects a missing body", async () => {
+  await withServer(createFakeService(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
     });
 
     assert.equal(response.status, 400);

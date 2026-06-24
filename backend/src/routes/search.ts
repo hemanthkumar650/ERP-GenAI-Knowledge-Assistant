@@ -34,7 +34,7 @@ export default function createSearchRouter(ragService: RagService) {
 
   router.post("/", async (req, res, next) => {
     try {
-      const body = req.body as SearchRequest;
+      const body = (req.body ?? {}) as Partial<SearchRequest>;
       const query = normalizeText(body.query);
 
       if (!query) {
