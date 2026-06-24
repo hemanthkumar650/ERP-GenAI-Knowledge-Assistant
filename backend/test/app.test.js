@@ -402,6 +402,27 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search falls back to the result length when count is missing", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+      count: 2,
+    });
+  });
+  });
+
   await runTest("POST /api/search passes backend X-Request-Id to the RAG service", async () => {
   let seenArgs;
   const service = createFakeService();

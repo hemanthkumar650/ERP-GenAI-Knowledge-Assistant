@@ -33,6 +33,14 @@ function normalizeTopK(rawTopK: unknown, fallback = 3, max = 10): number {
   return Math.min(Math.max(Math.trunc(parsed), 1), max);
 }
 
+function normalizeResultCount(rawCount: unknown, fallback: number): number {
+  if (typeof rawCount !== "number" || !Number.isFinite(rawCount)) {
+    return fallback;
+  }
+
+  return Math.max(Math.trunc(rawCount), 0);
+}
+
 export default function createSearchRouter(ragService: RagService) {
   const router = Router();
 
@@ -47,9 +55,10 @@ export default function createSearchRouter(ragService: RagService) {
 
       const topK = normalizeTopK(body.topK);
       const data = await ragService.searchDocuments(query, topK, req.requestId);
+      const results = data.results ?? [];
       const response: SearchResponse = {
-        results: data.results ?? [],
-        count: data.count ?? 0,
+        results,
+        count: normalizeResultCount(data.count, results.length),
       };
 
       return res.json(response);
