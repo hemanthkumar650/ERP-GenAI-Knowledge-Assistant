@@ -207,6 +207,9 @@ async function main() {
     const blankResponse = await fetch(`${baseUrl}/api/chunks?limit=   `);
     assert.equal(blankResponse.status, 200);
 
+    const repeatedResponse = await fetch(`${baseUrl}/api/chunks?limit=7&limit=9`);
+    assert.equal(repeatedResponse.status, 200);
+
     const zeroResponse = await fetch(`${baseUrl}/api/chunks?limit=0`);
     assert.equal(zeroResponse.status, 200);
 
@@ -217,7 +220,7 @@ async function main() {
     assert.equal(decimalResponse.status, 200);
   });
 
-  assert.deepEqual(receivedLimits, [12, 12, 1, 50, 4]);
+  assert.deepEqual(receivedLimits, [12, 12, 12, 1, 50, 4]);
   });
 
   await runTest("POST /api/reindex passes backend X-Request-Id to the RAG service", async () => {
@@ -487,6 +490,13 @@ async function main() {
     });
     assert.equal(blankResponse.status, 200);
 
+    const arrayResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: [7] }),
+    });
+    assert.equal(arrayResponse.status, 200);
+
     const zeroResponse = await fetch(`${baseUrl}/api/search`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -509,7 +519,7 @@ async function main() {
     assert.equal(decimalResponse.status, 200);
   });
 
-  assert.deepEqual(receivedTopKs, [3, 3, 3, 1, 10, 4]);
+  assert.deepEqual(receivedTopKs, [3, 3, 3, 3, 1, 10, 4]);
   });
 
   await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {

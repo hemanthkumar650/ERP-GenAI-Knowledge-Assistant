@@ -17,6 +17,10 @@ function normalizeChunkLimit(rawLimit: unknown, fallback = 12, max = 50): number
     return fallback;
   }
 
+  if (Array.isArray(rawLimit)) {
+    return fallback;
+  }
+
   if (typeof rawLimit === "string" && rawLimit.trim() === "") {
     return fallback;
   }

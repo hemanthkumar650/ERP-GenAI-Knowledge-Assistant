@@ -17,6 +17,10 @@ function normalizeTopK(rawTopK: unknown, fallback = 3, max = 10): number {
     return fallback;
   }
 
+  if (Array.isArray(rawTopK)) {
+    return fallback;
+  }
+
   if (typeof rawTopK === "string" && rawTopK.trim() === "") {
     return fallback;
   }
