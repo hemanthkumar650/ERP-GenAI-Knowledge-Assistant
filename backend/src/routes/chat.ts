@@ -40,6 +40,10 @@ function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
   );
 }
 
+function normalizeAnswer(rawAnswer: unknown): string {
+  return typeof rawAnswer === "string" ? rawAnswer : "";
+}
+
 export default function createChatRouter(ragService: RagService) {
   const router = Router();
 
@@ -55,7 +59,7 @@ export default function createChatRouter(ragService: RagService) {
 
       const data = await ragService.askQuestion(message, conversationId, req.requestId);
       const response: ChatResponse = {
-        response: data.answer,
+        response: normalizeAnswer(data.answer),
         sources: normalizeSources(data.sources),
         chunks: normalizeChunks(data.chunks),
         conversationId: normalizeConversationId(data.session_id) ?? conversationId,

@@ -41,6 +41,17 @@ function normalizeResultCount(rawCount: unknown, fallback: number): number {
   return Math.max(Math.trunc(rawCount), 0);
 }
 
+function normalizeResults(rawResults: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(rawResults)) {
+    return [];
+  }
+
+  return rawResults.filter(
+    (result): result is Record<string, unknown> =>
+      typeof result === "object" && result !== null && !Array.isArray(result),
+  );
+}
+
 export default function createSearchRouter(ragService: RagService) {
   const router = Router();
 
@@ -55,7 +66,7 @@ export default function createSearchRouter(ragService: RagService) {
 
       const topK = normalizeTopK(body.topK);
       const data = await ragService.searchDocuments(query, topK, req.requestId);
-      const results = data.results ?? [];
+      const results = normalizeResults(data.results);
       const response: SearchResponse = {
         results,
         count: normalizeResultCount(data.count, results.length),

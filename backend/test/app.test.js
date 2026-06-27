@@ -412,6 +412,27 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat normalizes a non-string answer", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: { text: "Approved" },
+    sources: [],
+    chunks: [],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).response, "");
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string conversationId values", async () => {
   let seenConversationId = "not-called";
   const service = createFakeService();
@@ -484,6 +505,27 @@ async function main() {
     assert.deepEqual(await response.json(), {
       results: [{ id: "chunk-1" }, { id: "chunk-2" }],
       count: 2,
+    });
+  });
+  });
+
+  await runTest("POST /api/search normalizes malformed results", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: [{ id: "chunk-1" }, "bad-result", null, ["nested"]],
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1" }],
+      count: 1,
     });
   });
   });
