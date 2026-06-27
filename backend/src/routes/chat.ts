@@ -21,6 +21,25 @@ function normalizeConversationId(rawConversationId: unknown): string | undefined
   return normalized || undefined;
 }
 
+function normalizeSources(rawSources: unknown): string[] {
+  if (!Array.isArray(rawSources)) {
+    return [];
+  }
+
+  return rawSources.filter((source): source is string => typeof source === "string");
+}
+
+function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(rawChunks)) {
+    return [];
+  }
+
+  return rawChunks.filter(
+    (chunk): chunk is Record<string, unknown> =>
+      typeof chunk === "object" && chunk !== null && !Array.isArray(chunk),
+  );
+}
+
 export default function createChatRouter(ragService: RagService) {
   const router = Router();
 
@@ -37,8 +56,8 @@ export default function createChatRouter(ragService: RagService) {
       const data = await ragService.askQuestion(message, conversationId, req.requestId);
       const response: ChatResponse = {
         response: data.answer,
-        sources: data.sources ?? [],
-        chunks: data.chunks ?? [],
+        sources: normalizeSources(data.sources),
+        chunks: normalizeChunks(data.chunks),
         conversationId: normalizeConversationId(data.session_id) ?? conversationId,
         timestamp: new Date().toISOString(),
       };

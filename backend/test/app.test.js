@@ -389,6 +389,29 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat normalizes malformed sources and chunks", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: ["policy.pdf", 42, null],
+    chunks: [{ id: "chunk-1" }, "bad-chunk", null, ["nested"]],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.sources, ["policy.pdf"]);
+    assert.deepEqual(body.chunks, [{ id: "chunk-1" }]);
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string conversationId values", async () => {
   let seenConversationId = "not-called";
   const service = createFakeService();
