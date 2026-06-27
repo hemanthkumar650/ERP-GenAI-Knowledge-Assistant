@@ -39,7 +39,7 @@ export default function createChatRouter(ragService: RagService) {
         response: data.answer,
         sources: data.sources ?? [],
         chunks: data.chunks ?? [],
-        conversationId: data.session_id ?? conversationId,
+        conversationId: normalizeConversationId(data.session_id) ?? conversationId,
         timestamp: new Date().toISOString(),
       };
 

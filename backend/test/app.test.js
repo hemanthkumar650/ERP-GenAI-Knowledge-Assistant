@@ -347,6 +347,48 @@ async function main() {
   assert.deepEqual(seenConversationIds, ["session-42", undefined]);
   });
 
+  await runTest("POST /api/chat normalizes returned session_id before responding", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: [],
+    chunks: [],
+    session_id: "  session-from-rag  ",
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: "fallback-session" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).conversationId, "session-from-rag");
+  });
+  });
+
+  await runTest("POST /api/chat falls back when returned session_id is not a string", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: [],
+    chunks: [],
+    session_id: null,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: "fallback-session" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).conversationId, "fallback-session");
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string conversationId values", async () => {
   let seenConversationId = "not-called";
   const service = createFakeService();
