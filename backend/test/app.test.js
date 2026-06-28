@@ -509,6 +509,28 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search clamps negative count values to zero", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+    count: -7,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+      count: 0,
+    });
+  });
+  });
+
   await runTest("POST /api/search normalizes malformed results", async () => {
   const service = createFakeService();
   service.searchDocuments = async () => ({
