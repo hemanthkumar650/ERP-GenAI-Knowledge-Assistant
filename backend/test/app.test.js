@@ -596,6 +596,28 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search falls back when count is a numeric string", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+    count: "0",
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1" }, { id: "chunk-2" }],
+      count: 2,
+    });
+  });
+  });
+
   await runTest("POST /api/search truncates fractional count values", async () => {
   const service = createFakeService();
   service.searchDocuments = async () => ({
