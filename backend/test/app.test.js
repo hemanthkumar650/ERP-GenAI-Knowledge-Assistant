@@ -781,6 +781,36 @@ async function main() {
   assert.deepEqual(receivedTopKs, [3, 3, 3, 3, 1, 10, 4]);
   });
 
+  await runTest("POST /api/search normalizes boolean topK values", async () => {
+  const receivedTopKs = [];
+  const service = createFakeService();
+  service.searchDocuments = async (_query, topK = 3) => {
+    receivedTopKs.push(topK);
+    return {
+      results: [],
+      count: 0,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const trueResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: true }),
+    });
+    assert.equal(trueResponse.status, 200);
+
+    const falseResponse = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: false }),
+    });
+    assert.equal(falseResponse.status, 200);
+  });
+
+  assert.deepEqual(receivedTopKs, [1, 1]);
+  });
+
   await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {
     let seenId;
     const service = createFakeService();
