@@ -937,6 +937,30 @@ async function main() {
   assert.deepEqual(receivedTopKs, [10]);
   });
 
+  await runTest("POST /api/search parses hex string topK values", async () => {
+  const receivedTopKs = [];
+  const service = createFakeService();
+  service.searchDocuments = async (_query, topK = 3) => {
+    receivedTopKs.push(topK);
+    return {
+      results: [],
+      count: 0,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: "0x10" }),
+    });
+
+    assert.equal(response.status, 200);
+  });
+
+  assert.deepEqual(receivedTopKs, [10]);
+  });
+
   await runTest("passes backend X-Request-Id through to the RAG service on /api/chat", async () => {
     let seenId;
     const service = createFakeService();
