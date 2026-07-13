@@ -847,6 +847,52 @@ async function main() {
   assert.deepEqual(receivedTopKs, [3, 3, 3, 3, 1, 10, 4]);
   });
 
+  await runTest("POST /api/search falls back when topK is an object", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async (_query, topK = 3) => ({
+    results: [{ id: "chunk-1", topK }],
+    count: 1,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: { value: 4 } }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1", topK: 3 }],
+      count: 1,
+    });
+  });
+  });
+
+  await runTest("POST /api/search falls back for ISO date string topK values", async () => {
+  const receivedTopKs = [];
+  const service = createFakeService();
+  service.searchDocuments = async (_query, topK = 3) => {
+    receivedTopKs.push(topK);
+    return {
+      results: [],
+      count: 0,
+    };
+  };
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement", topK: "2026-07-13T00:00:00.000Z" }),
+    });
+
+    assert.equal(response.status, 200);
+  });
+
+  assert.deepEqual(receivedTopKs, [3]);
+  });
+
   await runTest("POST /api/search normalizes boolean topK values", async () => {
   const receivedTopKs = [];
   const service = createFakeService();
