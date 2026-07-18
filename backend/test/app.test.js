@@ -410,6 +410,27 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat leaves conversationId undefined when returned session_id is blank", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: [],
+    chunks: [],
+    session_id: "   ",
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).conversationId, undefined);
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string returned session_id values", async () => {
   const service = createFakeService();
   service.askQuestion = async () => ({
