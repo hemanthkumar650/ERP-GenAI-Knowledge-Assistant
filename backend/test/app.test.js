@@ -540,6 +540,45 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat trims and blanks whitespace answers", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "  Approved  ",
+    sources: [],
+    chunks: [],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const trimmedResponse = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(trimmedResponse.status, 200);
+    assert.equal((await trimmedResponse.json()).response, "Approved");
+  });
+
+  service.askQuestion = async () => ({
+    answer: "   ",
+    sources: [],
+    chunks: [],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const blankResponse = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(blankResponse.status, 200);
+    assert.equal((await blankResponse.json()).response, "");
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string conversationId values", async () => {
   let seenConversationId = "not-called";
   const service = createFakeService();

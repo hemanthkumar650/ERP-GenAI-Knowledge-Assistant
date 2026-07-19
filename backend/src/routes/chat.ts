@@ -45,7 +45,12 @@ function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
 }
 
 function normalizeAnswer(rawAnswer: unknown): string {
-  return typeof rawAnswer === "string" ? rawAnswer : "";
+  if (typeof rawAnswer !== "string") {
+    return "";
+  }
+
+  const normalized = rawAnswer.trim();
+  return normalized || "";
 }
 
 export default function createChatRouter(ragService: RagService) {
