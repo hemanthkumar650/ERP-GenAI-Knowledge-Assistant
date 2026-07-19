@@ -497,6 +497,28 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat deduplicates trimmed sources", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: ["  policy.pdf  ", "policy.pdf", " other.pdf ", "policy.pdf"],
+    chunks: [],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.sources, ["policy.pdf", "other.pdf"]);
+  });
+  });
+
   await runTest("POST /api/chat normalizes a non-string answer", async () => {
   const service = createFakeService();
   service.askQuestion = async () => ({

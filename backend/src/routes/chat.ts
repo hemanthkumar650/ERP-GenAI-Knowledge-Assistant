@@ -26,9 +26,11 @@ function normalizeSources(rawSources: unknown): string[] {
     return [];
   }
 
-  return rawSources
+  return [...new Set(
+    rawSources
     .map((source) => (typeof source === "string" ? source.trim() : ""))
-    .filter((source): source is string => source.length > 0);
+    .filter((source): source is string => source.length > 0),
+  )];
 }
 
 function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
