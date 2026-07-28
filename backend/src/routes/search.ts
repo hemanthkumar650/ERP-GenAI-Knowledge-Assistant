@@ -41,15 +41,21 @@ function normalizeResultCount(rawCount: unknown, fallback: number): number {
   return Math.max(Math.trunc(rawCount), 0);
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
 function normalizeResults(rawResults: unknown): Array<Record<string, unknown>> {
   if (!Array.isArray(rawResults)) {
     return [];
   }
 
-  return rawResults.filter(
-    (result): result is Record<string, unknown> =>
-      typeof result === "object" && result !== null && !Array.isArray(result),
-  );
+  return rawResults.filter((result): result is Record<string, unknown> => isPlainObject(result));
 }
 
 export default function createSearchRouter(ragService: RagService) {

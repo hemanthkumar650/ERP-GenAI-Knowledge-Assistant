@@ -852,6 +852,27 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search drops non-plain object results", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: [{ id: "chunk-1" }, new Date("2026-07-28T00:00:00.000Z")],
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [{ id: "chunk-1" }],
+      count: 1,
+    });
+  });
+  });
+
   await runTest("POST /api/search preserves count when results is not an array", async () => {
   const service = createFakeService();
   service.searchDocuments = async () => ({
