@@ -852,6 +852,28 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/search preserves count when results is not an array", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => ({
+    results: { id: "chunk-1" },
+    count: 5,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [],
+      count: 5,
+    });
+  });
+  });
+
   await runTest("POST /api/search passes backend X-Request-Id to the RAG service", async () => {
   let seenArgs;
   const service = createFakeService();
