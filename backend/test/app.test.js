@@ -475,6 +475,28 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat drops non-plain object chunks", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => ({
+    answer: "ok",
+    sources: ["policy.pdf"],
+    chunks: [{ id: "chunk-1" }, new Date("2026-07-28T00:00:00.000Z")],
+    session_id: undefined,
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.chunks, [{ id: "chunk-1" }]);
+  });
+  });
+
   await runTest("POST /api/chat trims and drops blank sources", async () => {
   const service = createFakeService();
   service.askQuestion = async () => ({

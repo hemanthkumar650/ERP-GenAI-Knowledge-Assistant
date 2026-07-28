@@ -33,15 +33,21 @@ function normalizeSources(rawSources: unknown): string[] {
   )];
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
 function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
   if (!Array.isArray(rawChunks)) {
     return [];
   }
 
-  return rawChunks.filter(
-    (chunk): chunk is Record<string, unknown> =>
-      typeof chunk === "object" && chunk !== null && !Array.isArray(chunk),
-  );
+  return rawChunks.filter((chunk): chunk is Record<string, unknown> => isPlainObject(chunk));
 }
 
 function normalizeAnswer(rawAnswer: unknown): string {
