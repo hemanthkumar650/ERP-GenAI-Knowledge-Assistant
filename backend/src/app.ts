@@ -50,6 +50,23 @@ function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
   return rawChunks.filter((chunk): chunk is Record<string, unknown> => isPlainObject(chunk));
 }
 
+function normalizeStatus(rawStatus: unknown, fallback = "ok"): string {
+  if (typeof rawStatus !== "string") {
+    return fallback;
+  }
+
+  const normalized = rawStatus.trim();
+  return normalized || fallback;
+}
+
+function normalizeIndexedChunks(rawCount: unknown, fallback = 0): number {
+  if (typeof rawCount !== "number" || !Number.isFinite(rawCount)) {
+    return fallback;
+  }
+
+  return Math.max(Math.trunc(rawCount), 0);
+}
+
 function errorStatus(error: unknown): number {
   if (typeof error !== "object" || error === null) {
     return 500;
@@ -103,7 +120,11 @@ export function createApp(service: RagService = ragService) {
   app.post("/api/reindex", async (req, res, next) => {
     try {
       const data = await service.reindexDocuments(req.requestId);
-      res.json(data);
+      const payload = isPlainObject(data) ? data : {};
+      res.json({
+        status: normalizeStatus(payload.status),
+        indexed_chunks: normalizeIndexedChunks(payload.indexed_chunks),
+      });
     } catch (error) {
       next(error);
     }

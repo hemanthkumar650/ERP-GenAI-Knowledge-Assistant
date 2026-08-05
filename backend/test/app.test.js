@@ -258,6 +258,27 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/reindex normalizes malformed payloads", async () => {
+  const service = createFakeService();
+  service.reindexDocuments = async () => ({
+    status: "  complete  ",
+    indexed_chunks: -7.8,
+    extra: "ignored",
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/reindex`, {
+      method: "POST",
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      status: "complete",
+      indexed_chunks: 0,
+    });
+  });
+  });
+
   await runTest("POST /api/chat rejects a blank message", async () => {
   await withServer(createFakeService(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/chat`, {
