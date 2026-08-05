@@ -73,11 +73,12 @@ export default function createChatRouter(ragService: RagService) {
       }
 
       const data = await ragService.askQuestion(message, conversationId, req.requestId);
+      const payload = isPlainObject(data) ? data : {};
       const response: ChatResponse = {
-        response: normalizeAnswer(data.answer),
-        sources: normalizeSources(data.sources),
-        chunks: normalizeChunks(data.chunks),
-        conversationId: normalizeConversationId(data.session_id) ?? conversationId,
+        response: normalizeAnswer(payload.answer),
+        sources: normalizeSources(payload.sources),
+        chunks: normalizeChunks(payload.chunks),
+        conversationId: normalizeConversationId(payload.session_id) ?? conversationId,
         timestamp: new Date().toISOString(),
       };
 

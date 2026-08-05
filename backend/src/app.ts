@@ -67,6 +67,10 @@ function normalizeIndexedChunks(rawCount: unknown, fallback = 0): number {
   return Math.max(Math.trunc(rawCount), 0);
 }
 
+function normalizeBoolean(rawValue: unknown, fallback = false): boolean {
+  return typeof rawValue === "boolean" ? rawValue : fallback;
+}
+
 function errorStatus(error: unknown): number {
   if (typeof error !== "object" || error === null) {
     return 500;
@@ -100,7 +104,12 @@ export function createApp(service: RagService = ragService) {
   app.get("/api/health", async (req, res, next) => {
     try {
       const data = await service.getHealth(req.requestId);
-      res.json(data);
+      const payload = isPlainObject(data) ? data : {};
+      res.json({
+        status: normalizeStatus(payload.status),
+        vector_db_loaded: normalizeBoolean(payload.vector_db_loaded),
+        indexed_chunks: normalizeIndexedChunks(payload.indexed_chunks),
+      });
     } catch (error) {
       next(error);
     }

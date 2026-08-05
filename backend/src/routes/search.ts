@@ -72,10 +72,11 @@ export default function createSearchRouter(ragService: RagService) {
 
       const topK = normalizeTopK(body.topK);
       const data = await ragService.searchDocuments(query, topK, req.requestId);
-      const results = normalizeResults(data.results);
+      const payload = isPlainObject(data) ? data : {};
+      const results = normalizeResults(payload.results);
       const response: SearchResponse = {
         results,
-        count: normalizeResultCount(data.count, results.length),
+        count: normalizeResultCount(payload.count, results.length),
       };
 
       return res.json(response);

@@ -157,6 +157,26 @@ async function main() {
   });
   });
 
+  await runTest("GET /api/health normalizes malformed payloads", async () => {
+  const service = createFakeService();
+  service.getHealth = async () => ({
+    status: "  degraded  ",
+    vector_db_loaded: "yes",
+    indexed_chunks: -4.7,
+    extra: "ignored",
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/health`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      status: "degraded",
+      vector_db_loaded: false,
+      indexed_chunks: 0,
+    });
+  });
+  });
+
   await runTest("GET /api/chunks forwards the requested limit", async () => {
   let receivedLimit;
   const service = createFakeService();
@@ -637,6 +657,30 @@ async function main() {
   });
   });
 
+  await runTest("POST /api/chat normalizes a non-object upstream payload", async () => {
+  const service = createFakeService();
+  service.askQuestion = async () => null;
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "hello", conversationId: "session-42" }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      response: "",
+      sources: [],
+      chunks: [],
+      conversationId: "session-42",
+      timestamp: body.timestamp,
+    });
+    assert.ok(Date.parse(body.timestamp));
+  });
+  });
+
   await runTest("POST /api/chat ignores non-string conversationId values", async () => {
   let seenConversationId = "not-called";
   const service = createFakeService();
@@ -689,6 +733,25 @@ async function main() {
     assert.equal(receivedArgs.query, "expense reimbursement");
     assert.equal(receivedArgs.topK, 3);
     assert.ok(typeof receivedArgs.requestId === "string" && receivedArgs.requestId.length > 0);
+  });
+  });
+
+  await runTest("POST /api/search normalizes a non-object upstream payload", async () => {
+  const service = createFakeService();
+  service.searchDocuments = async () => null;
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/search`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "expense reimbursement" }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      results: [],
+      count: 0,
+    });
   });
   });
 
