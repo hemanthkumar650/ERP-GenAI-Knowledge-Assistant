@@ -223,6 +223,21 @@ async function main() {
   assert.deepEqual(receivedLimits, [12, 12, 12, 1, 50, 4]);
   });
 
+  await runTest("GET /api/chunks filters malformed chunk payloads", async () => {
+  const service = createFakeService();
+  service.getChunks = async () => ({
+    chunks: [{ id: "chunk-1" }, null, "bad", ["nested"], { id: "chunk-2" }],
+  });
+
+  await withServer(service, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/chunks`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      chunks: [{ id: "chunk-1" }, { id: "chunk-2" }],
+    });
+  });
+  });
+
   await runTest("POST /api/reindex passes backend X-Request-Id to the RAG service", async () => {
   let seenId;
   const service = createFakeService();

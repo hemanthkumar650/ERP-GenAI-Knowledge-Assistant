@@ -33,6 +33,23 @@ function normalizeChunkLimit(rawLimit: unknown, fallback = 12, max = 50): number
   return Math.min(Math.max(Math.trunc(parsed), 1), max);
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function normalizeChunks(rawChunks: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(rawChunks)) {
+    return [];
+  }
+
+  return rawChunks.filter((chunk): chunk is Record<string, unknown> => isPlainObject(chunk));
+}
+
 function errorStatus(error: unknown): number {
   if (typeof error !== "object" || error === null) {
     return 500;
@@ -76,7 +93,8 @@ export function createApp(service: RagService = ragService) {
     try {
       const limit = normalizeChunkLimit(req.query.limit);
       const data = await service.getChunks(limit, req.requestId);
-      res.json(data);
+      const chunks = isPlainObject(data) ? normalizeChunks(data.chunks) : [];
+      res.json({ chunks });
     } catch (error) {
       next(error);
     }
