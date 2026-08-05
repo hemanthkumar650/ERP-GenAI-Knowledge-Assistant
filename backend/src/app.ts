@@ -71,6 +71,18 @@ function normalizeBoolean(rawValue: unknown, fallback = false): boolean {
   return typeof rawValue === "boolean" ? rawValue : fallback;
 }
 
+function normalizeErrorMessage(
+  rawMessage: unknown,
+  fallback = "Unexpected backend error while calling the Python RAG service.",
+): string {
+  if (typeof rawMessage !== "string") {
+    return fallback;
+  }
+
+  const normalized = rawMessage.trim();
+  return normalized || fallback;
+}
+
 function errorStatus(error: unknown): number {
   if (typeof error !== "object" || error === null) {
     return 500;
@@ -154,10 +166,7 @@ export function createApp(service: RagService = ragService) {
   });
 
   app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unexpected backend error while calling the Python RAG service.";
+    const message = normalizeErrorMessage(error instanceof Error ? error.message : undefined);
     res.status(errorStatus(error)).json({ error: message, requestId: req.requestId });
   });
 

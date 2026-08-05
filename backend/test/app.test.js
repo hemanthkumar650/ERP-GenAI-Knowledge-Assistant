@@ -1448,6 +1448,25 @@ async function main() {
     });
   });
 
+  await runTest("blank upstream error messages fall back to the default error text", async () => {
+    const service = createFakeService();
+    service.getHealth = async () => {
+      throw new Error("   ");
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/health`, {
+        headers: { "X-Request-Id": "blank-error-test" },
+      });
+
+      assert.equal(response.status, 500);
+      assert.deepEqual(await response.json(), {
+        error: "Unexpected backend error while calling the Python RAG service.",
+        requestId: "blank-error-test",
+      });
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }
