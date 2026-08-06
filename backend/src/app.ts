@@ -102,7 +102,17 @@ function errorStatus(error: unknown): number {
 
   const candidate =
     "status" in error ? error.status : "statusCode" in error ? error.statusCode : undefined;
-  return typeof candidate === "number" && candidate >= 400 && candidate < 600 ? candidate : 500;
+
+  if (typeof candidate === "number" && candidate >= 400 && candidate < 600) {
+    return candidate;
+  }
+
+  if (typeof candidate === "string" && /^[0-9]+$/.test(candidate)) {
+    const parsed = Number(candidate);
+    return parsed >= 400 && parsed < 600 ? parsed : 500;
+  }
+
+  return 500;
 }
 
 export function createApp(service: RagService = ragService) {

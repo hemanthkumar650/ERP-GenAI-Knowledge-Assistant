@@ -1486,6 +1486,25 @@ async function main() {
     });
   });
 
+  await runTest("plain object errors accept numeric string status codes", async () => {
+    const service = createFakeService();
+    service.getHealth = async () => {
+      throw { statusCode: "503", message: "  service unavailable  " };
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/health`, {
+        headers: { "X-Request-Id": "string-status-error-test" },
+      });
+
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), {
+        error: "service unavailable",
+        requestId: "string-status-error-test",
+      });
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }
