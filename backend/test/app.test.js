@@ -1505,6 +1505,25 @@ async function main() {
     });
   });
 
+  await runTest("plain object errors accept trimmed decimal-zero string status codes", async () => {
+    const service = createFakeService();
+    service.getHealth = async () => {
+      throw { status: " 504.0 ", message: "  gateway timeout  " };
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/health`, {
+        headers: { "X-Request-Id": "decimal-string-status-error-test" },
+      });
+
+      assert.equal(response.status, 504);
+      assert.deepEqual(await response.json(), {
+        error: "gateway timeout",
+        requestId: "decimal-string-status-error-test",
+      });
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }

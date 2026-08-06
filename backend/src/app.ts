@@ -107,8 +107,14 @@ function errorStatus(error: unknown): number {
     return candidate;
   }
 
-  if (typeof candidate === "string" && /^[0-9]+$/.test(candidate)) {
-    const parsed = Number(candidate);
+  if (typeof candidate === "string") {
+    const normalized = candidate.trim();
+
+    if (!/^[0-9]+(?:\.0+)?$/.test(normalized)) {
+      return 500;
+    }
+
+    const parsed = Number(normalized);
     return parsed >= 400 && parsed < 600 ? parsed : 500;
   }
 
