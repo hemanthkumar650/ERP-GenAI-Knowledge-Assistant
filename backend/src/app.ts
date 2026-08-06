@@ -83,6 +83,18 @@ function normalizeErrorMessage(
   return normalized || fallback;
 }
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return normalizeErrorMessage(error.message);
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return normalizeErrorMessage(error.message);
+  }
+
+  return normalizeErrorMessage(undefined);
+}
+
 function errorStatus(error: unknown): number {
   if (typeof error !== "object" || error === null) {
     return 500;
@@ -166,7 +178,7 @@ export function createApp(service: RagService = ragService) {
   });
 
   app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const message = normalizeErrorMessage(error instanceof Error ? error.message : undefined);
+    const message = errorMessage(error);
     res.status(errorStatus(error)).json({ error: message, requestId: req.requestId });
   });
 
