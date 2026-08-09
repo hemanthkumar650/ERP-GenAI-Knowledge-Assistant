@@ -1524,6 +1524,25 @@ async function main() {
     });
   });
 
+  await runTest("string errors preserve a trimmed message", async () => {
+    const service = createFakeService();
+    service.getHealth = async () => {
+      throw "  upstream offline  ";
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/health`, {
+        headers: { "X-Request-Id": "string-error-test" },
+      });
+
+      assert.equal(response.status, 500);
+      assert.deepEqual(await response.json(), {
+        error: "upstream offline",
+        requestId: "string-error-test",
+      });
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }

@@ -88,6 +88,10 @@ function errorMessage(error: unknown): string {
     return normalizeErrorMessage(error.message);
   }
 
+  if (typeof error === "string") {
+    return normalizeErrorMessage(error);
+  }
+
   if (typeof error === "object" && error !== null && "message" in error) {
     return normalizeErrorMessage(error.message);
   }
