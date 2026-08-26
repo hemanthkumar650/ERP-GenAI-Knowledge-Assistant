@@ -1543,6 +1543,25 @@ async function main() {
     });
   });
 
+  await runTest("plain object errors accept plus-prefixed string status codes", async () => {
+    const service = createFakeService();
+    service.getHealth = async () => {
+      throw { statusCode: " +502 ", message: "  bad gateway  " };
+    };
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/health`, {
+        headers: { "X-Request-Id": "plus-status-error-test" },
+      });
+
+      assert.equal(response.status, 502);
+      assert.deepEqual(await response.json(), {
+        error: "bad gateway",
+        requestId: "plus-status-error-test",
+      });
+    });
+  });
+
   if (!process.exitCode) {
     console.log("All backend API tests passed.");
   }

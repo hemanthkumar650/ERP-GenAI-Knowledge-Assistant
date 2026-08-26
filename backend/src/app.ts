@@ -114,7 +114,7 @@ function errorStatus(error: unknown): number {
   if (typeof candidate === "string") {
     const normalized = candidate.trim();
 
-    if (!/^[0-9]+(?:\.0+)?$/.test(normalized)) {
+    if (!/^\+?[0-9]+(?:\.0+)?$/.test(normalized)) {
       return 500;
     }
 
